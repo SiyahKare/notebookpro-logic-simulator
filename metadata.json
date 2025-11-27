@@ -1,0 +1,5 @@
+{
+  "name": "NotebookPro Logic Simulator",
+  "description": "Backend logic simulation for NotebookPro repair and spare parts system, featuring dynamic pricing, psychological rounding, and role-based access control.",
+  "requestFramePermissions": []
+}
