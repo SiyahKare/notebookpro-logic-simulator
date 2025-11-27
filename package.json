@@ -1,12 +1,15 @@
 {
   "name": "notebookpro-logic-simulator",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview --port 4173 --host",
+    "serve": "npm run build && npm run preview",
+    "tunnel": "cloudflared tunnel run notebookpro",
+    "start": "npm run serve"
   },
   "dependencies": {
     "react-dom": "^19.2.0",

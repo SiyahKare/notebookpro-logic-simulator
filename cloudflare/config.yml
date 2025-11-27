@@ -1,0 +1,16 @@
+# Cloudflare Tunnel Yapılandırması
+# NotebookPro - notebookpro.siyahkare.com
+
+tunnel: notebookpro
+credentials-file: /Users/onur/.cloudflared/notebookpro.json
+
+ingress:
+  # Ana domain - notebookpro.siyahkare.com
+  - hostname: notebookpro.siyahkare.com
+    service: http://localhost:4173
+    originRequest:
+      noTLSVerify: true
+  
+  # Catch-all rule (zorunlu)
+  - service: http_status:404
+
