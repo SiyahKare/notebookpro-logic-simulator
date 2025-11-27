@@ -114,7 +114,7 @@ const App: React.FC = () => {
               ? " Dealer Discount Applied (Before VAT/Conversion)" 
               : " Standard Customer Pricing"} 
             <br />
-            Formula: [ (USD_Price - Discount) * Rate * 1.20 (VAT) ] -> Rounded Up to nearest 10 -> Subtract 0.10
+            Formula: [ (USD_Price - Discount) * Rate * 1.20 (VAT) ] → Rounded Up to nearest 10 → Subtract 0.10
           </div>
         </div>
 

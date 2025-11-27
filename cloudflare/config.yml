@@ -1,8 +1,8 @@
 # Cloudflare Tunnel Yapılandırması
 # NotebookPro - notebookpro.siyahkare.com
 
-tunnel: notebookpro
-credentials-file: /Users/onur/.cloudflared/notebookpro.json
+tunnel: 2b6f3c08-cca1-40f8-8659-8a11903f6b40
+credentials-file: /Users/onur/.cloudflared/2b6f3c08-cca1-40f8-8659-8a11903f6b40.json
 
 ingress:
   # Ana domain - notebookpro.siyahkare.com
