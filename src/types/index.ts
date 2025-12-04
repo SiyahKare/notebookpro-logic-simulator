@@ -135,10 +135,28 @@ export interface Order {
   id: string;
   userId: string;
   customerName: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  customerAddress?: string;
   items: CartItem[];
   totalAmount: number;
   status: OrderStatus;
+  trackingNumber?: string;
+  shippingCompany?: string;
   createdAt: Date;
+  shippedAt?: Date;
+  deliveredAt?: Date;
+  notes?: string;
+}
+
+/**
+ * Order Search Filters
+ */
+export interface OrderFilters {
+  search: string;
+  status: OrderStatus | 'all';
+  dateFrom?: Date;
+  dateTo?: Date;
 }
 
 /**

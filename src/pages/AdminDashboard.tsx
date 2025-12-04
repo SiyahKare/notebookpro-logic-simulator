@@ -3,7 +3,7 @@ import { useProducts, ProductFilters } from '../context/ProductContext';
 import { useAuth } from '../context/AuthContext';
 import { useRepair } from '../context/RepairContext';
 import { useOrder } from '../context/OrderContext';
-import { ProductCategory, Product, UserRole, RepairStatus, OrderStatus, Order, RepairRecord, WarrantyResult } from '../types';
+import { ProductCategory, Product, UserRole, RepairStatus, OrderStatus, Order, RepairRecord, WarrantyResult, OrderFilters } from '../types';
 import { formatCurrency } from '../utils/pricing';
 import SEO from '../components/SEO';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -15,7 +15,7 @@ const AdminDashboard: React.FC = () => {
   const { user, users, approveDealer } = useAuth();
   const { products, addProduct, updateProduct, deleteProduct, updateStock, getFilteredProducts } = useProducts();
   const { repairRecords, updateRepairStatus, assignTechnician, generateServiceLabel, sendToWarranty, concludeWarranty } = useRepair();
-  const { orders, updateOrderStatus } = useOrder();
+  const { orders, updateOrderStatus, updateTrackingNumber, getFilteredOrders, generateInvoiceHTML } = useOrder();
   const { showToast, ToastContainer } = useToast();
   
   const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'dealers' | 'repairs' | 'orders'>('dashboard');
@@ -134,28 +134,28 @@ const AdminDashboard: React.FC = () => {
   const openWarrantyModal = (record: RepairRecord) => {
     setSelectedRepair(record);
     if (record.status === RepairStatus.IN_WARRANTY) {
-      setRmaConcludeModalOpen(true);
+        setRmaConcludeModalOpen(true);
     } else {
-      setRmaFormData({ supplier: '', rmaCode: '' });
-      setRmaModalOpen(true);
+        setRmaFormData({ supplier: '', rmaCode: '' });
+        setRmaModalOpen(true);
     }
   };
 
   const handleSubmitRma = () => {
     if (selectedRepair && rmaFormData.supplier && rmaFormData.rmaCode) {
-      sendToWarranty(selectedRepair.tracking_code, rmaFormData.supplier, rmaFormData.rmaCode);
-      setRmaModalOpen(false);
-      setSelectedRepair(null);
+        sendToWarranty(selectedRepair.tracking_code, rmaFormData.supplier, rmaFormData.rmaCode);
+        setRmaModalOpen(false);
+        setSelectedRepair(null);
       showToast('Cihaz garantiye gönderildi!', 'success');
     }
   };
 
   const handleSubmitConclusion = () => {
     if (selectedRepair) {
-      concludeWarranty(selectedRepair.tracking_code, concludeData.result, concludeData.notes, concludeData.swapSerial);
-      setRmaConcludeModalOpen(false);
-      setSelectedRepair(null);
-      setConcludeData({ result: 'repaired', notes: '', swapSerial: '' });
+        concludeWarranty(selectedRepair.tracking_code, concludeData.result, concludeData.notes, concludeData.swapSerial);
+        setRmaConcludeModalOpen(false);
+        setSelectedRepair(null);
+        setConcludeData({ result: 'repaired', notes: '', swapSerial: '' });
       showToast('Garanti süreci kapatıldı!', 'success');
     }
   };
@@ -175,7 +175,7 @@ const AdminDashboard: React.FC = () => {
     setFilters(prev => ({ ...prev, ...newFilters }));
     setCurrentPage(1);
   };
-
+  
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
       <SEO title="Yönetim Paneli" />
@@ -244,18 +244,18 @@ const AdminDashboard: React.FC = () => {
                   <div key={p.id} className="bg-white p-3 rounded-xl border border-red-100 flex justify-between items-center">
                     <div className="min-w-0">
                       <p className="font-bold text-slate-800 text-sm truncate">{p.name}</p>
-                      <p className="text-xs text-slate-500">{p.sku}</p>
-                    </div>
+                    <p className="text-xs text-slate-500">{p.sku}</p>
+                 </div>
                     <div className="text-right ml-2">
-                      <p className="text-2xl font-bold text-red-600">{p.stock}</p>
-                      <p className="text-[10px] text-red-400">Limit: {p.critical_limit}</p>
-                    </div>
-                  </div>
-                ))}
+                    <p className="text-2xl font-bold text-red-600">{p.stock}</p>
+                    <p className="text-[10px] text-red-400">Limit: {p.critical_limit}</p>
+                 </div>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
+      )}
+      </div>
       )}
 
       {/* ========== PRODUCTS TAB ========== */}
@@ -265,47 +265,47 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-fit">
             <h3 className="font-bold text-lg text-slate-800 mb-4">➕ Yeni Ürün Ekle</h3>
             <form onSubmit={handleAddProduct} className="space-y-4">
-              <div>
+               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">Ürün Adı *</label>
                 <input required className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition"
-                  value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
-              </div>
+                    value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+               </div>
               
               <div className="grid grid-cols-2 gap-3">
-                <div>
+                  <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">SKU *</label>
                   <input required className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
-                    value={newProduct.sku} onChange={e => setNewProduct({...newProduct, sku: e.target.value})} />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">Raf Yeri</label>
+                        value={newProduct.sku} onChange={e => setNewProduct({...newProduct, sku: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Raf Yeri</label>
                   <input placeholder="A-01" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
-                    value={newProduct.shelf_location} onChange={e => setNewProduct({...newProduct, shelf_location: e.target.value})} />
-                </div>
-              </div>
+                        value={newProduct.shelf_location} onChange={e => setNewProduct({...newProduct, shelf_location: e.target.value})} />
+                  </div>
+               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">Kategori</label>
+                  <div>
+                     <label className="block text-xs font-bold text-slate-500 mb-1">Kategori</label>
                   <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
-                    value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value as ProductCategory})}>
+                        value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value as ProductCategory})}>
                     {Object.values(ProductCategory).map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
-                  </select>
-                </div>
-                <div>
+                     </select>
+                  </div>
+                  <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Fiyat (USD) *</label>
                   <input required type="number" step="0.01" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
-                    value={newProduct.price_usd} onChange={e => setNewProduct({...newProduct, price_usd: e.target.value})} />
-                </div>
-              </div>
+                        value={newProduct.price_usd} onChange={e => setNewProduct({...newProduct, price_usd: e.target.value})} />
+                  </div>
+               </div>
 
               <div className="grid grid-cols-3 gap-3">
-                <div>
+               <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Stok *</label>
                   <input required type="number" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
-                    value={newProduct.stock} onChange={e => setNewProduct({...newProduct, stock: e.target.value})} />
-                </div>
-                <div>
+                        value={newProduct.stock} onChange={e => setNewProduct({...newProduct, stock: e.target.value})} />
+               </div>
+               <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Kritik</label>
                   <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
                     value={newProduct.critical_limit} onChange={e => setNewProduct({...newProduct, critical_limit: e.target.value})} />
@@ -320,19 +320,19 @@ const AdminDashboard: React.FC = () => {
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">
                   Uyumlu Modeller <span className="text-red-500 font-normal">(Excel yapıştır)</span>
-                </label>
-                <textarea
+                 </label>
+                 <textarea 
                   placeholder="Her satır bir model..."
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none font-mono"
                   rows={4}
-                  value={newProduct.models}
-                  onChange={e => setNewProduct({...newProduct, models: e.target.value})}
-                />
-              </div>
+                    value={newProduct.models} 
+                    onChange={e => setNewProduct({...newProduct, models: e.target.value})} 
+                 />
+               </div>
 
               <button type="submit" className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-red-600 transition shadow-lg">
                 Ürünü Kaydet
-              </button>
+               </button>
             </form>
           </div>
 
@@ -492,34 +492,34 @@ const AdminDashboard: React.FC = () => {
       {activeTab === 'dealers' && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <h3 className="font-bold text-lg text-slate-800 mb-4">🏢 Onay Bekleyen Bayiler</h3>
-          {pendingDealers.length === 0 ? (
+           {pendingDealers.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-5xl mb-4">✅</div>
               <p className="text-slate-500">Tüm başvurular işlendi!</p>
             </div>
-          ) : (
-            <div className="grid gap-4">
-              {pendingDealers.map(d => (
+           ) : (
+             <div className="grid gap-4">
+                {pendingDealers.map(d => (
                 <div key={d.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 rounded-xl gap-4">
-                  <div>
-                    <h4 className="font-bold text-slate-800">{d.name}</h4>
-                    <p className="text-xs text-slate-500">{d.email} | {d.phone}</p>
-                    {d.company_details && (
+                     <div>
+                        <h4 className="font-bold text-slate-800">{d.name}</h4>
+                        <p className="text-xs text-slate-500">{d.email} | {d.phone}</p>
+                        {d.company_details && (
                       <div className="mt-2 text-xs bg-white p-2 rounded inline-block text-slate-600 border border-slate-100">
-                        {d.company_details.taxTitle} - VKN: {d.company_details.taxNumber}
-                      </div>
-                    )}
-                  </div>
-                  <button
+                            {d.company_details.taxTitle} - VKN: {d.company_details.taxNumber}
+                          </div>
+                        )}
+                     </div>
+                     <button 
                     onClick={() => { approveDealer(d.id); showToast(`${d.name} onaylandı!`, 'success'); }}
                     className="bg-green-600 text-white px-6 py-2 rounded-xl text-sm font-bold hover:bg-green-700 transition shadow-md"
-                  >
+                     >
                     ✓ Onayla
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+                     </button>
+                  </div>
+                ))}
+             </div>
+           )}
         </div>
       )}
 
@@ -527,7 +527,7 @@ const AdminDashboard: React.FC = () => {
       {activeTab === 'repairs' && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <h3 className="font-bold text-lg text-slate-800 mb-4">🔧 Servis Takip Merkezi</h3>
-          <div className="overflow-x-auto">
+           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
@@ -537,105 +537,70 @@ const AdminDashboard: React.FC = () => {
                   <th className="px-4 py-3 text-left">Arıza</th>
                   <th className="px-4 py-3 text-left">Teknisyen</th>
                   <th className="px-4 py-3 text-left rounded-tr-lg">Durum</th>
-                </tr>
-              </thead>
-              <tbody>
-                {repairRecords.map(r => (
-                  <tr key={r.id} className={`border-b border-slate-50 hover:bg-slate-50 ${r.status === RepairStatus.IN_WARRANTY ? 'bg-orange-50' : ''}`}>
+                  </tr>
+                </thead>
+                <tbody>
+                  {repairRecords.map(r => (
+                    <tr key={r.id} className={`border-b border-slate-50 hover:bg-slate-50 ${r.status === RepairStatus.IN_WARRANTY ? 'bg-orange-50' : ''}`}>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         <button onClick={() => generateServiceLabel(r)} className="text-xs bg-slate-800 text-white px-2 py-1 rounded hover:bg-slate-700">
-                          Etiket
-                        </button>
-                        <button
-                          onClick={() => openWarrantyModal(r)}
+                           Etiket
+                         </button>
+                         <button 
+                            onClick={() => openWarrantyModal(r)} 
                           className={`text-xs px-2 py-1 rounded ${r.status === RepairStatus.IN_WARRANTY ? 'bg-green-600 text-white' : 'bg-orange-100 text-orange-700'}`}
-                        >
+                         >
                           {r.status === RepairStatus.IN_WARRANTY ? 'Sonuçlandır' : 'RMA'}
-                        </button>
+                         </button>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-red-600 font-bold">{r.tracking_code}</td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-slate-900">{r.customer_name}</div>
-                      <div className="text-xs text-slate-500">{r.device_brand} {r.device_model}</div>
-                    </td>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-red-600 font-bold">{r.tracking_code}</td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-slate-900">{r.customer_name}</div>
+                        <div className="text-xs text-slate-500">{r.device_brand} {r.device_model}</div>
+                      </td>
                     <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">{r.issue_description}</td>
-                    <td className="px-4 py-3">
-                      <select
+                      <td className="px-4 py-3">
+                        <select
                         className="bg-white border border-slate-200 text-xs rounded p-1 outline-none"
-                        value={r.assigned_technician || ''}
+                           value={r.assigned_technician || ''}
                         onChange={e => assignTechnician(r.tracking_code, e.target.value)}
-                      >
-                        <option value="">Atanmadı</option>
-                        {technicians.map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3">
-                      <select
+                        >
+                           <option value="">Atanmadı</option>
+                           {technicians.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <select 
                         className="bg-slate-100 border-none text-xs font-medium rounded p-2 outline-none"
-                        value={r.status}
+                          value={r.status}
                         onChange={e => updateRepairStatus(r.tracking_code, e.target.value as RepairStatus)}
-                      >
+                        >
                         {Object.values(RepairStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+           </div>
         </div>
       )}
 
       {/* ========== ORDERS TAB ========== */}
       {activeTab === 'orders' && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="font-bold text-lg text-slate-800 mb-4">🛒 Sipariş Yönetimi</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
-                  <th className="px-4 py-3 text-left rounded-tl-lg">Sipariş No</th>
-                  <th className="px-4 py-3 text-left">Müşteri</th>
-                  <th className="px-4 py-3 text-right">Tutar</th>
-                  <th className="px-4 py-3 text-left">Tarih</th>
-                  <th className="px-4 py-3 text-left">Durum</th>
-                  <th className="px-4 py-3 text-right rounded-tr-lg">İşlem</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center py-12 text-slate-500">Henüz sipariş yok</td></tr>
-                ) : orders.map(order => (
-                  <tr key={order.id} className="border-b border-slate-50 hover:bg-slate-50">
-                    <td className="px-4 py-3 font-mono font-bold text-slate-700">{order.id}</td>
-                    <td className="px-4 py-3 text-slate-800 font-medium">{order.customerName}</td>
-                    <td className="px-4 py-3 text-right font-bold text-slate-900">{formatCurrency(order.totalAmount)}</td>
-                    <td className="px-4 py-3 text-xs text-slate-500">{new Date(order.createdAt).toLocaleDateString('tr-TR')}</td>
-                    <td className="px-4 py-3">
-                      <select
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase outline-none ${getStatusBadge(order.status)}`}
-                        value={order.status}
-                        onChange={e => updateOrderStatus(order.id, e.target.value as OrderStatus)}
-                      >
-                        {Object.values(OrderStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button onClick={() => setSelectedOrder(order)} className="text-slate-400 hover:text-red-600">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <OrdersTab 
+          orders={orders}
+          getFilteredOrders={getFilteredOrders}
+          updateOrderStatus={updateOrderStatus}
+          updateTrackingNumber={updateTrackingNumber}
+          generateInvoiceHTML={generateInvoiceHTML}
+          getStatusBadge={getStatusBadge}
+          formatCurrency={formatCurrency}
+          showToast={showToast}
+          setSelectedOrder={setSelectedOrder}
+        />
       )}
 
       {/* ========== MODALS ========== */}
@@ -695,8 +660,8 @@ const AdminDashboard: React.FC = () => {
                   value={editingProduct.category}
                   onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value as ProductCategory })}>
                   {Object.values(ProductCategory).map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
-                </select>
-              </div>
+                            </select>
+                          </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">Bayi İndirimi (%)</label>
                 <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
@@ -709,10 +674,10 @@ const AdminDashboard: React.FC = () => {
                 </button>
                 <button type="submit" className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700">
                   Kaydet
-                </button>
+                          </button>
               </div>
             </form>
-          </div>
+           </div>
         </div>
       )}
 
@@ -733,118 +698,350 @@ const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-bold text-slate-800">Sipariş Detayı</h3>
-              <button onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-red-600">✕</button>
-            </div>
-            <div className="p-6">
-              <div className="mb-4">
-                <p className="text-xs text-slate-500 uppercase font-bold">Sipariş No</p>
-                <p className="font-mono text-slate-900">{selectedOrder.id}</p>
+                 <h3 className="font-bold text-slate-800">Sipariş Detayı</h3>
+                 <button onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-red-600">✕</button>
               </div>
-              <div className="mb-6">
-                <p className="text-xs text-slate-500 uppercase font-bold mb-2">Ürünler</p>
-                <div className="space-y-2">
-                  {selectedOrder.items.map((item, idx) => (
+              <div className="p-6">
+                 <div className="mb-4">
+                    <p className="text-xs text-slate-500 uppercase font-bold">Sipariş No</p>
+                    <p className="font-mono text-slate-900">{selectedOrder.id}</p>
+                 </div>
+                 <div className="mb-6">
+                    <p className="text-xs text-slate-500 uppercase font-bold mb-2">Ürünler</p>
+                    <div className="space-y-2">
+                       {selectedOrder.items.map((item, idx) => (
                     <div key={idx} className="flex justify-between text-sm border-b border-slate-50 pb-2">
-                      <div>
-                        <span className="font-medium text-slate-800">{item.product.name}</span>
-                        <div className="text-xs text-slate-400">{item.product.sku}</div>
-                      </div>
-                      <div className="font-bold text-slate-600">x{item.quantity}</div>
+                            <div>
+                               <span className="font-medium text-slate-800">{item.product.name}</span>
+                               <div className="text-xs text-slate-400">{item.product.sku}</div>
+                            </div>
+                            <div className="font-bold text-slate-600">x{item.quantity}</div>
+                         </div>
+                       ))}
                     </div>
-                  ))}
-                </div>
+                 </div>
+                 <div className="flex justify-between items-center bg-slate-900 text-white p-4 rounded-xl">
+                    <span>Toplam Tutar</span>
+                    <span className="font-bold text-xl">{formatCurrency(selectedOrder.totalAmount)}</span>
+                 </div>
               </div>
-              <div className="flex justify-between items-center bg-slate-900 text-white p-4 rounded-xl">
-                <span>Toplam Tutar</span>
-                <span className="font-bold text-xl">{formatCurrency(selectedOrder.totalAmount)}</span>
-              </div>
-            </div>
-          </div>
+           </div>
         </div>
       )}
-
+      
       {/* Warranty Send Modal */}
       {rmaModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <h3 className="font-bold text-lg text-slate-800 mb-4">Garantiye Gönder</h3>
-            <div className="space-y-4">
-              <div>
+                <div className="space-y-4">
+                    <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">Tedarikçi</label>
-                <select
+                        <select 
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"
-                  value={rmaFormData.supplier}
+                            value={rmaFormData.supplier}
                   onChange={e => setRmaFormData({ ...rmaFormData, supplier: e.target.value })}
-                >
+                        >
                   <option value="">Seçiniz</option>
-                  {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
+                            {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                    <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">RMA Kodu</label>
-                <input
+                        <input 
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"
-                  value={rmaFormData.rmaCode}
+                            value={rmaFormData.rmaCode}
                   onChange={e => setRmaFormData({ ...rmaFormData, rmaCode: e.target.value })}
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
+                        />
+                    </div>
+                    <div className="flex gap-2 pt-2">
                 <button onClick={() => setRmaModalOpen(false)} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-sm">İptal</button>
                 <button onClick={handleSubmitRma} className="flex-1 py-2 bg-orange-500 text-white rounded-lg font-bold text-sm">Gönder</button>
-              </div>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
       )}
 
       {/* Warranty Conclude Modal */}
       {rmaConcludeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <h3 className="font-bold text-lg text-slate-800 mb-4">Garanti Sonuçlandır</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Sonuç</label>
-                <select
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Sonuç</label>
+                        <select 
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"
-                  value={concludeData.result}
+                            value={concludeData.result}
                   onChange={e => setConcludeData({ ...concludeData, result: e.target.value as WarrantyResult })}
                 >
                   <option value="repaired">Onarıldı</option>
                   <option value="swapped">Değişim</option>
                   <option value="refunded">İade</option>
                   <option value="rejected">Ret</option>
-                </select>
-              </div>
-              {concludeData.result === 'swapped' && (
+                        </select>
+                    </div>
+                    {concludeData.result === 'swapped' && (
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Yeni Seri No</label>
-                  <input
+                            <input 
                     className="w-full bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-sm"
-                    value={concludeData.swapSerial}
+                                value={concludeData.swapSerial}
                     onChange={e => setConcludeData({ ...concludeData, swapSerial: e.target.value })}
-                  />
-                </div>
-              )}
-              <div>
+                            />
+                        </div>
+                    )}
+                    <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">Notlar</label>
-                <textarea
+                        <textarea 
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"
-                  rows={3}
-                  value={concludeData.notes}
+                            rows={3}
+                            value={concludeData.notes}
                   onChange={e => setConcludeData({ ...concludeData, notes: e.target.value })}
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
+                        />
+                    </div>
+                    <div className="flex gap-2 pt-2">
                 <button onClick={() => setRmaConcludeModalOpen(false)} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-sm">İptal</button>
                 <button onClick={handleSubmitConclusion} className="flex-1 py-2 bg-green-600 text-white rounded-lg font-bold text-sm">Kaydet</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
+    </div>
+  );
+};
+
+// Orders Tab Component
+const OrdersTab: React.FC<{
+  orders: Order[];
+  getFilteredOrders: (filters: OrderFilters) => Order[];
+  updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+  updateTrackingNumber: (orderId: string, trackingNumber: string, shippingCompany?: string) => void;
+  generateInvoiceHTML: (order: Order) => string;
+  getStatusBadge: (status: OrderStatus) => string;
+  formatCurrency: (amount: number) => string;
+  showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
+  setSelectedOrder: (order: Order | null) => void;
+}> = ({ orders, getFilteredOrders, updateOrderStatus, updateTrackingNumber, generateInvoiceHTML, getStatusBadge, formatCurrency, showToast, setSelectedOrder }) => {
+  const [orderFilters, setOrderFilters] = useState<OrderFilters>({
+    search: '',
+    status: 'all'
+  });
+  const [trackingModal, setTrackingModal] = useState<{ isOpen: boolean; order: Order | null }>({ isOpen: false, order: null });
+  const [trackingData, setTrackingData] = useState({ trackingNumber: '', shippingCompany: 'Yurtiçi Kargo' });
+
+  const shippingCompanies = ['Yurtiçi Kargo', 'Aras Kargo', 'MNG Kargo', 'PTT Kargo', 'Sürat Kargo', 'UPS', 'DHL'];
+  
+  const filteredOrders = getFilteredOrders(orderFilters);
+
+  const handlePrintInvoice = (order: Order) => {
+    const invoiceHTML = generateInvoiceHTML(order);
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(invoiceHTML);
+      printWindow.document.close();
+      printWindow.onload = () => {
+        printWindow.print();
+      };
+    }
+    showToast('Fatura yazdırılıyor...', 'info');
+  };
+
+  const handleSaveTracking = () => {
+    if (trackingModal.order && trackingData.trackingNumber) {
+      updateTrackingNumber(trackingModal.order.id, trackingData.trackingNumber, trackingData.shippingCompany);
+      if (trackingModal.order.status === OrderStatus.PROCESSING) {
+        updateOrderStatus(trackingModal.order.id, OrderStatus.SHIPPED);
+      }
+      showToast('Kargo bilgileri kaydedildi!', 'success');
+      setTrackingModal({ isOpen: false, order: null });
+      setTrackingData({ trackingNumber: '', shippingCompany: 'Yurtiçi Kargo' });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="relative sm:col-span-2">
+            <input
+              type="text"
+              placeholder="Ara: Sipariş no, müşteri adı, telefon, kargo no..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none"
+              value={orderFilters.search}
+              onChange={e => setOrderFilters(prev => ({ ...prev, search: e.target.value }))}
+            />
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <select
+            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-red-500 outline-none"
+            value={orderFilters.status}
+            onChange={e => setOrderFilters(prev => ({ ...prev, status: e.target.value as OrderStatus | 'all' }))}
+          >
+            <option value="all">Tüm Durumlar</option>
+            {Object.values(OrderStatus).map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Orders Table */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-lg text-slate-800">🛒 Siparişler</h3>
+          <span className="text-sm text-slate-500">{filteredOrders.length} sipariş</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
+                <th className="px-4 py-3 text-left rounded-tl-lg">Sipariş No</th>
+                <th className="px-4 py-3 text-left">Müşteri</th>
+                <th className="px-4 py-3 text-left">Kargo</th>
+                <th className="px-4 py-3 text-right">Tutar</th>
+                <th className="px-4 py-3 text-left">Tarih</th>
+                <th className="px-4 py-3 text-left">Durum</th>
+                <th className="px-4 py-3 text-right rounded-tr-lg">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredOrders.length === 0 ? (
+                <tr><td colSpan={7} className="text-center py-12 text-slate-500">Sipariş bulunamadı</td></tr>
+              ) : filteredOrders.map(order => (
+                <tr key={order.id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                  <td className="px-4 py-3">
+                    <div className="font-mono font-bold text-slate-700">{order.id}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-slate-800">{order.customerName}</div>
+                    <div className="text-xs text-slate-400">{order.customerPhone || '-'}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {order.trackingNumber ? (
+                      <div>
+                        <div className="font-mono text-xs text-green-600 font-bold">{order.trackingNumber}</div>
+                        <div className="text-[10px] text-slate-400">{order.shippingCompany}</div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setTrackingModal({ isOpen: true, order }); setTrackingData({ trackingNumber: '', shippingCompany: 'Yurtiçi Kargo' }); }}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        + Kargo Ekle
+                      </button>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right font-bold text-slate-900">{formatCurrency(order.totalAmount)}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">{new Date(order.createdAt).toLocaleDateString('tr-TR')}</td>
+                  <td className="px-4 py-3">
+                    <select
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase outline-none cursor-pointer ${getStatusBadge(order.status)}`}
+                      value={order.status}
+                      onChange={e => updateOrderStatus(order.id, e.target.value as OrderStatus)}
+                    >
+                      {Object.values(OrderStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => setSelectedOrder(order)}
+                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        title="Detay"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handlePrintInvoice(order)}
+                        className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
+                        title="Fatura"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                      </button>
+                      {order.trackingNumber && (
+                        <button
+                          onClick={() => { setTrackingModal({ isOpen: true, order }); setTrackingData({ trackingNumber: order.trackingNumber || '', shippingCompany: order.shippingCompany || 'Yurtiçi Kargo' }); }}
+                          className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                          title="Kargo Düzenle"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Tracking Modal */}
+      {trackingModal.isOpen && trackingModal.order && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-slate-800">📦 Kargo Bilgileri</h3>
+              <button onClick={() => setTrackingModal({ isOpen: false, order: null })} className="text-slate-400 hover:text-red-600">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 p-3 rounded-xl">
+                <div className="text-xs text-slate-500">Sipariş</div>
+                <div className="font-mono font-bold text-slate-800">{trackingModal.order.id}</div>
+                <div className="text-sm text-slate-600">{trackingModal.order.customerName}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Kargo Firması</label>
+                <select
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                  value={trackingData.shippingCompany}
+                  onChange={e => setTrackingData(prev => ({ ...prev, shippingCompany: e.target.value }))}
+                >
+                  {shippingCompanies.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Takip Numarası</label>
+                <input
+                  type="text"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm font-mono"
+                  placeholder="Kargo takip numarasını girin"
+                  value={trackingData.trackingNumber}
+                  onChange={e => setTrackingData(prev => ({ ...prev, trackingNumber: e.target.value }))}
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setTrackingModal({ isOpen: false, order: null })}
+                  className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-semibold text-sm"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={handleSaveTracking}
+                  className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700"
+                >
+                  Kaydet
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 };
