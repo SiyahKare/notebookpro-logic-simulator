@@ -160,6 +160,26 @@ export interface OrderFilters {
 }
 
 /**
+ * Status History Entry
+ */
+export interface StatusHistoryEntry {
+  status: RepairStatus;
+  timestamp: Date;
+  note?: string;
+  updatedBy?: string;
+}
+
+/**
+ * Repair Search Filters
+ */
+export interface RepairFilters {
+  search: string;
+  status: RepairStatus | 'all';
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+/**
  * Repair/Service Record
  */
 export interface RepairRecord {
@@ -168,6 +188,7 @@ export interface RepairRecord {
   
   customer_name: string;
   customer_phone: string;
+  customer_email?: string;
   device_brand?: string;
   device_model: string;
   serial_number?: string;
@@ -177,6 +198,7 @@ export interface RepairRecord {
   device_photos?: string[]; 
   
   status: RepairStatus;
+  statusHistory?: StatusHistoryEntry[];
   assigned_technician?: string;
   assigned_technician_id?: string | null;
   outsourced_to_partner_id?: string | null;

@@ -3,7 +3,7 @@ import { useProducts, ProductFilters } from '../context/ProductContext';
 import { useAuth } from '../context/AuthContext';
 import { useRepair } from '../context/RepairContext';
 import { useOrder } from '../context/OrderContext';
-import { ProductCategory, Product, UserRole, RepairStatus, OrderStatus, Order, RepairRecord, WarrantyResult, OrderFilters } from '../types';
+import { ProductCategory, Product, UserRole, RepairStatus, OrderStatus, Order, RepairRecord, WarrantyResult, OrderFilters, RepairFilters, StatusHistoryEntry } from '../types';
 import { formatCurrency } from '../utils/pricing';
 import SEO from '../components/SEO';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -14,7 +14,7 @@ const ITEMS_PER_PAGE = 10;
 const AdminDashboard: React.FC = () => {
   const { user, users, approveDealer } = useAuth();
   const { products, addProduct, updateProduct, deleteProduct, updateStock, getFilteredProducts } = useProducts();
-  const { repairRecords, updateRepairStatus, assignTechnician, generateServiceLabel, sendToWarranty, concludeWarranty } = useRepair();
+  const { repairRecords, updateRepairStatus, assignTechnician, generateServiceLabel, sendToWarranty, concludeWarranty, getFilteredRepairs, createRepairFromAdmin } = useRepair();
   const { orders, updateOrderStatus, updateTrackingNumber, getFilteredOrders, generateInvoiceHTML } = useOrder();
   const { showToast, ToastContainer } = useToast();
   
@@ -214,7 +214,7 @@ const AdminDashboard: React.FC = () => {
             ) : null}
           </button>
         ))}
-      </div>
+          </div>
 
       {/* ========== DASHBOARD TAB ========== */}
       {activeTab === 'dashboard' && (
@@ -525,67 +525,17 @@ const AdminDashboard: React.FC = () => {
 
       {/* ========== REPAIRS TAB ========== */}
       {activeTab === 'repairs' && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="font-bold text-lg text-slate-800 mb-4">🔧 Servis Takip Merkezi</h3>
-           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
-                  <th className="px-4 py-3 text-left rounded-tl-lg">İşlemler</th>
-                  <th className="px-4 py-3 text-left">Takip No</th>
-                  <th className="px-4 py-3 text-left">Müşteri / Cihaz</th>
-                  <th className="px-4 py-3 text-left">Arıza</th>
-                  <th className="px-4 py-3 text-left">Teknisyen</th>
-                  <th className="px-4 py-3 text-left rounded-tr-lg">Durum</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {repairRecords.map(r => (
-                    <tr key={r.id} className={`border-b border-slate-50 hover:bg-slate-50 ${r.status === RepairStatus.IN_WARRANTY ? 'bg-orange-50' : ''}`}>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button onClick={() => generateServiceLabel(r)} className="text-xs bg-slate-800 text-white px-2 py-1 rounded hover:bg-slate-700">
-                           Etiket
-                         </button>
-                         <button 
-                            onClick={() => openWarrantyModal(r)} 
-                          className={`text-xs px-2 py-1 rounded ${r.status === RepairStatus.IN_WARRANTY ? 'bg-green-600 text-white' : 'bg-orange-100 text-orange-700'}`}
-                         >
-                          {r.status === RepairStatus.IN_WARRANTY ? 'Sonuçlandır' : 'RMA'}
-                         </button>
-                      </div>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-red-600 font-bold">{r.tracking_code}</td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-slate-900">{r.customer_name}</div>
-                        <div className="text-xs text-slate-500">{r.device_brand} {r.device_model}</div>
-                      </td>
-                    <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">{r.issue_description}</td>
-                      <td className="px-4 py-3">
-                        <select
-                        className="bg-white border border-slate-200 text-xs rounded p-1 outline-none"
-                           value={r.assigned_technician || ''}
-                        onChange={e => assignTechnician(r.tracking_code, e.target.value)}
-                        >
-                           <option value="">Atanmadı</option>
-                           {technicians.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                      </td>
-                      <td className="px-4 py-3">
-                        <select 
-                        className="bg-slate-100 border-none text-xs font-medium rounded p-2 outline-none"
-                          value={r.status}
-                        onChange={e => updateRepairStatus(r.tracking_code, e.target.value as RepairStatus)}
-                        >
-                        {Object.values(RepairStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-           </div>
-        </div>
+        <RepairsTab
+          repairRecords={repairRecords}
+          getFilteredRepairs={getFilteredRepairs}
+          createRepairFromAdmin={createRepairFromAdmin}
+          updateRepairStatus={updateRepairStatus}
+          assignTechnician={assignTechnician}
+          generateServiceLabel={generateServiceLabel}
+          openWarrantyModal={openWarrantyModal}
+          showToast={showToast}
+          technicians={technicians}
+        />
       )}
 
       {/* ========== ORDERS TAB ========== */}
@@ -671,7 +621,7 @@ const AdminDashboard: React.FC = () => {
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={() => setEditingProduct(null)} className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-semibold">
                   İptal
-                </button>
+                          </button>
                 <button type="submit" className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700">
                   Kaydet
                           </button>
@@ -810,6 +760,305 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
+    </div>
+  );
+};
+
+// Repairs Tab Component  
+const RepairsTab: React.FC<{
+  repairRecords: RepairRecord[];
+  getFilteredRepairs: (filters: RepairFilters) => RepairRecord[];
+  createRepairFromAdmin: (data: any) => RepairRecord;
+  updateRepairStatus: (trackingCode: string, status: RepairStatus, note?: string) => void;
+  assignTechnician: (trackingCode: string, name: string) => void;
+  generateServiceLabel: (record: RepairRecord) => void;
+  openWarrantyModal: (record: RepairRecord) => void;
+  showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
+  technicians: string[];
+}> = ({ repairRecords, getFilteredRepairs, createRepairFromAdmin, updateRepairStatus, assignTechnician, generateServiceLabel, openWarrantyModal, showToast, technicians }) => {
+  const [repairFilters, setRepairFilters] = useState<RepairFilters>({ search: '', status: 'all' });
+  const [showNewRepairForm, setShowNewRepairForm] = useState(false);
+  const [selectedRepairDetail, setSelectedRepairDetail] = useState<RepairRecord | null>(null);
+  const [newRepairData, setNewRepairData] = useState({
+    customer_name: '', customer_phone: '', customer_email: '',
+    device_brand: '', device_model: '', serial_number: '',
+    issue_description: '', estimated_cost_tl: ''
+  });
+
+  const filteredRepairs = getFilteredRepairs(repairFilters);
+  const deviceBrands = ['Apple', 'Asus', 'Lenovo', 'Dell', 'HP', 'MSI', 'Acer', 'Samsung', 'Huawei', 'Monster', 'Casper', 'Diğer'];
+
+  const handleCreateRepair = (e: React.FormEvent) => {
+    e.preventDefault();
+    const record = createRepairFromAdmin({
+      ...newRepairData,
+      estimated_cost_tl: newRepairData.estimated_cost_tl ? parseFloat(newRepairData.estimated_cost_tl) : undefined
+    });
+    showToast(`Servis kaydı oluşturuldu: ${record.tracking_code}`, 'success');
+    setShowNewRepairForm(false);
+    setNewRepairData({ customer_name: '', customer_phone: '', customer_email: '', device_brand: '', device_model: '', serial_number: '', issue_description: '', estimated_cost_tl: '' });
+  };
+
+  const getStatusColor = (status: RepairStatus) => {
+    const colors: Record<string, string> = {
+      [RepairStatus.RECEIVED]: 'bg-slate-100 text-slate-700',
+      [RepairStatus.DIAGNOSING]: 'bg-blue-100 text-blue-700',
+      [RepairStatus.WAITING_PARTS]: 'bg-amber-100 text-amber-700',
+      [RepairStatus.WAITING_APPROVAL]: 'bg-purple-100 text-purple-700',
+      [RepairStatus.IN_PROGRESS]: 'bg-cyan-100 text-cyan-700',
+      [RepairStatus.AT_PARTNER]: 'bg-indigo-100 text-indigo-700',
+      [RepairStatus.IN_WARRANTY]: 'bg-orange-100 text-orange-700',
+      [RepairStatus.COMPLETED]: 'bg-green-100 text-green-700',
+      [RepairStatus.DELIVERED]: 'bg-emerald-100 text-emerald-700',
+      [RepairStatus.CANCELLED]: 'bg-red-100 text-red-700',
+    };
+    return colors[status] || 'bg-slate-100 text-slate-700';
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header with Filters */}
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <h3 className="font-bold text-lg text-slate-800">🔧 Servis Takip Merkezi</h3>
+          <button
+            onClick={() => setShowNewRepairForm(true)}
+            className="px-4 py-2 bg-red-600 text-white rounded-xl font-semibold text-sm hover:bg-red-700 transition flex items-center gap-2"
+          >
+            <span>+</span> Yeni Servis Kaydı
+          </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="relative sm:col-span-2">
+            <input
+              type="text"
+              placeholder="Ara: Takip no, müşteri, telefon, cihaz..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-red-500 outline-none"
+              value={repairFilters.search}
+              onChange={e => setRepairFilters(prev => ({ ...prev, search: e.target.value }))}
+            />
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <select
+            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm"
+            value={repairFilters.status}
+            onChange={e => setRepairFilters(prev => ({ ...prev, status: e.target.value as RepairStatus | 'all' }))}
+          >
+            <option value="all">Tüm Durumlar</option>
+            {Object.values(RepairStatus).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Repairs Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
+                <th className="px-4 py-3 text-left">Takip No</th>
+                <th className="px-4 py-3 text-left">Müşteri / Cihaz</th>
+                <th className="px-4 py-3 text-left">Arıza</th>
+                <th className="px-4 py-3 text-left">Teknisyen</th>
+                <th className="px-4 py-3 text-left">Durum</th>
+                <th className="px-4 py-3 text-right">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRepairs.length === 0 ? (
+                <tr><td colSpan={6} className="text-center py-12 text-slate-500">Servis kaydı bulunamadı</td></tr>
+              ) : filteredRepairs.map(r => (
+                <tr key={r.id} className={`border-b border-slate-50 hover:bg-slate-50/50 ${r.status === RepairStatus.IN_WARRANTY ? 'bg-orange-50/50' : ''}`}>
+                  <td className="px-4 py-3">
+                    <div className="font-mono text-red-600 font-bold">{r.tracking_code}</div>
+                    <div className="text-[10px] text-slate-400">{new Date(r.created_at).toLocaleDateString('tr-TR')}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-slate-900">{r.customer_name}</div>
+                    <div className="text-xs text-slate-500">{r.device_brand} {r.device_model}</div>
+                    <div className="text-[10px] text-slate-400">{r.customer_phone}</div>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 max-w-[200px]">
+                    <div className="truncate" title={r.issue_description}>{r.issue_description}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      className="bg-white border border-slate-200 text-xs rounded p-1.5 outline-none w-full max-w-[120px]"
+                      value={r.assigned_technician || ''}
+                      onChange={e => assignTechnician(r.tracking_code, e.target.value)}
+                    >
+                      <option value="">Atanmadı</option>
+                      {technicians.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      className={`text-xs font-medium rounded-full px-3 py-1 outline-none cursor-pointer ${getStatusColor(r.status)}`}
+                      value={r.status}
+                      onChange={e => updateRepairStatus(r.tracking_code, e.target.value as RepairStatus)}
+                    >
+                      {Object.values(RepairStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => setSelectedRepairDetail(r)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Detay & Timeline">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </button>
+                      <button onClick={() => generateServiceLabel(r)} className="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg" title="Etiket">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => openWarrantyModal(r)}
+                        className={`p-2 rounded-lg ${r.status === RepairStatus.IN_WARRANTY ? 'text-green-600 hover:bg-green-50' : 'text-orange-500 hover:bg-orange-50'}`}
+                        title={r.status === RepairStatus.IN_WARRANTY ? 'Sonuçlandır' : 'RMA/Garanti'}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* New Repair Form Modal */}
+      {showNewRepairForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-slate-800">➕ Yeni Servis Kaydı</h3>
+              <button onClick={() => setShowNewRepairForm(false)} className="text-slate-400 hover:text-red-600 text-xl">✕</button>
+            </div>
+            <form onSubmit={handleCreateRepair} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Müşteri Adı *</label>
+                  <input required className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                    value={newRepairData.customer_name} onChange={e => setNewRepairData(prev => ({ ...prev, customer_name: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Telefon *</label>
+                  <input required className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                    placeholder="05XX XXX XX XX"
+                    value={newRepairData.customer_phone} onChange={e => setNewRepairData(prev => ({ ...prev, customer_phone: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">E-posta</label>
+                  <input type="email" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                    value={newRepairData.customer_email} onChange={e => setNewRepairData(prev => ({ ...prev, customer_email: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Marka *</label>
+                  <select required className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                    value={newRepairData.device_brand} onChange={e => setNewRepairData(prev => ({ ...prev, device_brand: e.target.value }))}>
+                    <option value="">Seçiniz</option>
+                    {deviceBrands.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Model *</label>
+                  <input required className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                    placeholder="Örn: MacBook Pro A1708"
+                    value={newRepairData.device_model} onChange={e => setNewRepairData(prev => ({ ...prev, device_model: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Seri No</label>
+                  <input className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm font-mono"
+                    value={newRepairData.serial_number} onChange={e => setNewRepairData(prev => ({ ...prev, serial_number: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Tahmini Ücret (₺)</label>
+                  <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                    value={newRepairData.estimated_cost_tl} onChange={e => setNewRepairData(prev => ({ ...prev, estimated_cost_tl: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Arıza Açıklaması *</label>
+                <textarea required rows={3} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                  placeholder="Müşterinin şikayetini detaylı yazınız..."
+                  value={newRepairData.issue_description} onChange={e => setNewRepairData(prev => ({ ...prev, issue_description: e.target.value }))} />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowNewRepairForm(false)} className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-semibold">İptal</button>
+                <button type="submit" className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700">Kaydet</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Repair Detail & Timeline Modal */}
+      {selectedRepairDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-slate-800">Servis Detayı</h3>
+                <div className="font-mono text-red-600 text-sm">{selectedRepairDetail.tracking_code}</div>
+              </div>
+              <button onClick={() => setSelectedRepairDetail(null)} className="text-slate-400 hover:text-red-600 text-xl">✕</button>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* Customer & Device Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 p-3 rounded-xl">
+                  <div className="text-xs text-slate-500 mb-1">Müşteri</div>
+                  <div className="font-medium text-slate-800">{selectedRepairDetail.customer_name}</div>
+                  <div className="text-xs text-slate-500">{selectedRepairDetail.customer_phone}</div>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-xl">
+                  <div className="text-xs text-slate-500 mb-1">Cihaz</div>
+                  <div className="font-medium text-slate-800">{selectedRepairDetail.device_brand} {selectedRepairDetail.device_model}</div>
+                  {selectedRepairDetail.serial_number && <div className="text-xs text-slate-500 font-mono">{selectedRepairDetail.serial_number}</div>}
+                </div>
+              </div>
+
+              {/* Issue */}
+              <div className="bg-amber-50 p-3 rounded-xl border border-amber-100">
+                <div className="text-xs text-amber-600 font-bold mb-1">Arıza Açıklaması</div>
+                <div className="text-sm text-amber-900">{selectedRepairDetail.issue_description}</div>
+              </div>
+
+              {/* Timeline */}
+              <div>
+                <div className="text-xs text-slate-500 font-bold mb-3">📅 Durum Geçmişi</div>
+                <div className="space-y-3">
+                  {(selectedRepairDetail.statusHistory || []).map((entry, idx) => (
+                    <div key={idx} className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-green-500' : 'bg-slate-300'}`}></div>
+                        {idx < (selectedRepairDetail.statusHistory?.length || 0) - 1 && <div className="w-0.5 h-full bg-slate-200"></div>}
+                      </div>
+                      <div className="flex-1 pb-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getStatusColor(entry.status)}`}>{entry.status}</span>
+                          <span className="text-[10px] text-slate-400">{new Date(entry.timestamp).toLocaleString('tr-TR')}</span>
+                        </div>
+                        {entry.note && <div className="text-xs text-slate-600 mt-1">{entry.note}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

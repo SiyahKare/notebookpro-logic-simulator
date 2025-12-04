@@ -1,14 +1,24 @@
-
 import React, { createContext, useState, useContext, ReactNode } from 'react';
-import { RepairRecord, RepairStatus, WarrantyResult } from '../types';
+import { RepairRecord, RepairStatus, WarrantyResult, RepairFilters, StatusHistoryEntry } from '../types';
 import { mockRepairRecords, mockUsers, mockPartners } from '../data/mockData';
 import { generateRepairQRLink } from '../utils/helpers';
 
 interface RepairContextType {
   repairRecords: RepairRecord[];
-  createRepairRequest: (data: Omit<RepairRecord, 'id' | 'tracking_code' | 'status' | 'created_at' | 'updated_at' | 'assigned_technician' | 'assigned_technician_id' | 'outsourced_to_partner_id'>) => RepairRecord;
+  createRepairRequest: (data: Omit<RepairRecord, 'id' | 'tracking_code' | 'status' | 'created_at' | 'updated_at' | 'assigned_technician' | 'assigned_technician_id' | 'outsourced_to_partner_id' | 'statusHistory'>) => RepairRecord;
+  createRepairFromAdmin: (data: {
+    customer_name: string;
+    customer_phone: string;
+    customer_email?: string;
+    device_brand: string;
+    device_model: string;
+    serial_number?: string;
+    issue_description: string;
+    estimated_cost_tl?: number;
+  }) => RepairRecord;
   checkStatus: (trackingCode: string, phoneNumber: string) => RepairRecord | null;
-  updateRepairStatus: (trackingCode: string, newStatus: RepairStatus) => void;
+  updateRepairStatus: (trackingCode: string, newStatus: RepairStatus, note?: string) => void;
+  getFilteredRepairs: (filters: RepairFilters) => RepairRecord[];
   
   // ERP Features
   assignTechnician: (trackingCode: string, technicianId: string) => void;
@@ -23,8 +33,16 @@ interface RepairContextType {
 
 const RepairContext = createContext<RepairContextType | undefined>(undefined);
 
+// Add statusHistory to mock data
+const enhancedMockRepairs: RepairRecord[] = mockRepairRecords.map(r => ({
+  ...r,
+  statusHistory: [
+    { status: RepairStatus.RECEIVED, timestamp: r.created_at, note: 'Cihaz teslim alındı' }
+  ]
+}));
+
 export const RepairProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [repairRecords, setRepairRecords] = useState<RepairRecord[]>(mockRepairRecords);
+  const [repairRecords, setRepairRecords] = useState<RepairRecord[]>(enhancedMockRepairs);
 
   const generateTrackingCode = (): string => {
     const year = new Date().getFullYear();
@@ -32,12 +50,50 @@ export const RepairProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return `NB-${year}-${randomPart}`;
   };
 
+  /**
+   * Müşteri tarafından servis talebi oluşturma
+   */
   const createRepairRequest = (data: any): RepairRecord => {
     const newRecord: RepairRecord = {
       ...data,
       id: `rep_${Date.now()}`,
       tracking_code: generateTrackingCode(),
       status: RepairStatus.RECEIVED,
+      statusHistory: [{ status: RepairStatus.RECEIVED, timestamp: new Date(), note: 'Servis talebi oluşturuldu' }],
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+
+    setRepairRecords(prev => [newRecord, ...prev]);
+    return newRecord;
+  };
+
+  /**
+   * Admin tarafından servis kaydı oluşturma
+   */
+  const createRepairFromAdmin = (data: {
+    customer_name: string;
+    customer_phone: string;
+    customer_email?: string;
+    device_brand: string;
+    device_model: string;
+    serial_number?: string;
+    issue_description: string;
+    estimated_cost_tl?: number;
+  }): RepairRecord => {
+    const newRecord: RepairRecord = {
+      id: `rep_${Date.now()}`,
+      tracking_code: generateTrackingCode(),
+      customer_name: data.customer_name,
+      customer_phone: data.customer_phone,
+      customer_email: data.customer_email,
+      device_brand: data.device_brand,
+      device_model: data.device_model,
+      serial_number: data.serial_number,
+      issue_description: data.issue_description,
+      estimated_cost_tl: data.estimated_cost_tl,
+      status: RepairStatus.RECEIVED,
+      statusHistory: [{ status: RepairStatus.RECEIVED, timestamp: new Date(), note: 'Admin tarafından kayıt oluşturuldu' }],
       created_at: new Date(),
       updated_at: new Date(),
     };
@@ -55,102 +111,176 @@ export const RepairProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }) || null;
   };
 
-  const updateRepairStatus = (trackingCode: string, newStatus: RepairStatus) => {
-    setRepairRecords(prev => prev.map(record => 
-      record.tracking_code === trackingCode 
-        ? { ...record, status: newStatus, updated_at: new Date() } 
-        : record
-    ));
+  /**
+   * Durum güncelleme + history ekleme
+   */
+  const updateRepairStatus = (trackingCode: string, newStatus: RepairStatus, note?: string) => {
+    setRepairRecords(prev => prev.map(record => {
+      if (record.tracking_code !== trackingCode) return record;
+      
+      const historyEntry: StatusHistoryEntry = {
+        status: newStatus,
+        timestamp: new Date(),
+        note: note || `Durum güncellendi: ${newStatus}`
+      };
+
+      const currentHistory = record.statusHistory || [];
+      
+      return {
+        ...record,
+        status: newStatus,
+        statusHistory: [...currentHistory, historyEntry],
+        updated_at: new Date()
+      };
+    }));
   };
 
-  const assignTechnician = (trackingCode: string, technicianId: string) => {
-    const techUser = mockUsers.find(u => u.id === technicianId);
-    const techName = techUser ? techUser.name : 'Unknown Technician';
+  /**
+   * Filtrelenmiş servis kayıtları
+   */
+  const getFilteredRepairs = (filters: RepairFilters): RepairRecord[] => {
+    return repairRecords.filter(record => {
+      // Search filter
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchesSearch =
+          record.tracking_code.toLowerCase().includes(searchLower) ||
+          record.customer_name.toLowerCase().includes(searchLower) ||
+          record.customer_phone.includes(searchLower) ||
+          record.device_model.toLowerCase().includes(searchLower) ||
+          (record.device_brand && record.device_brand.toLowerCase().includes(searchLower));
+        if (!matchesSearch) return false;
+      }
 
-    setRepairRecords(prev => prev.map(record => 
-      record.tracking_code === trackingCode 
-        ? { 
-            ...record, 
-            assigned_technician_id: technicianId,
-            assigned_technician: techName,
-            updated_at: new Date(),
-            status: record.status === RepairStatus.RECEIVED ? RepairStatus.DIAGNOSING : record.status
-          } 
-        : record
-    ));
+      // Status filter
+      if (filters.status !== 'all' && record.status !== filters.status) {
+        return false;
+      }
+
+      // Date range
+      if (filters.dateFrom) {
+        const recordDate = new Date(record.created_at);
+        if (recordDate < filters.dateFrom) return false;
+      }
+      if (filters.dateTo) {
+        const recordDate = new Date(record.created_at);
+        if (recordDate > filters.dateTo) return false;
+      }
+
+      return true;
+    });
+  };
+
+  const assignTechnician = (trackingCode: string, technicianName: string) => {
+    setRepairRecords(prev => prev.map(record => {
+      if (record.tracking_code !== trackingCode) return record;
+
+      const historyEntry: StatusHistoryEntry = {
+        status: record.status === RepairStatus.RECEIVED ? RepairStatus.DIAGNOSING : record.status,
+        timestamp: new Date(),
+        note: `Teknisyen atandı: ${technicianName}`
+      };
+
+      const currentHistory = record.statusHistory || [];
+
+      return {
+        ...record,
+        assigned_technician: technicianName,
+        updated_at: new Date(),
+        status: record.status === RepairStatus.RECEIVED ? RepairStatus.DIAGNOSING : record.status,
+        statusHistory: [...currentHistory, historyEntry]
+      };
+    }));
   };
 
   const sendToPartner = (trackingCode: string, partnerId: string, estimatedCost: number) => {
     setRepairRecords(prev => prev.map(record => {
-      if (record.tracking_code === trackingCode) {
-        const currentNotes = Array.isArray(record.technician_notes) 
-            ? record.technician_notes 
-            : (record.technician_notes ? [record.technician_notes] : []);
+      if (record.tracking_code !== trackingCode) return record;
 
-        return {
-          ...record,
-          status: RepairStatus.AT_PARTNER,
-          outsourced_to_partner_id: partnerId,
-          cost_to_us: estimatedCost,
-          updated_at: new Date(),
-          technician_notes: [...currentNotes, `Dış servise gönderildi. Maliyet: ${estimatedCost} TL`]
-        };
-      }
-      return record;
+      const currentNotes = Array.isArray(record.technician_notes)
+        ? record.technician_notes
+        : (record.technician_notes ? [record.technician_notes] : []);
+
+      const historyEntry: StatusHistoryEntry = {
+        status: RepairStatus.AT_PARTNER,
+        timestamp: new Date(),
+        note: `Dış servise gönderildi. Maliyet: ${estimatedCost} TL`
+      };
+
+      const currentHistory = record.statusHistory || [];
+
+      return {
+        ...record,
+        status: RepairStatus.AT_PARTNER,
+        outsourced_to_partner_id: partnerId,
+        cost_to_us: estimatedCost,
+        updated_at: new Date(),
+        statusHistory: [...currentHistory, historyEntry],
+        technician_notes: [...currentNotes, `Dış servise gönderildi. Maliyet: ${estimatedCost} TL`]
+      };
     }));
   };
 
-  /**
-   * Yeni: Garantiye Gönder
-   */
   const sendToWarranty = (trackingCode: string, supplierName: string, rmaCode: string) => {
     setRepairRecords(prev => prev.map(record => {
-      if (record.tracking_code === trackingCode) {
-        const currentNotes = Array.isArray(record.technician_notes) 
-            ? record.technician_notes 
-            : (record.technician_notes ? [record.technician_notes] : []);
+      if (record.tracking_code !== trackingCode) return record;
 
-        return {
-          ...record,
-          status: RepairStatus.IN_WARRANTY,
-          is_warranty_claim: true,
-          supplier_name: supplierName,
-          external_rma_code: rmaCode,
-          warranty_result: 'pending',
-          updated_at: new Date(),
-          technician_notes: [...currentNotes, `Tedarikçiye (${supplierName}) sevk edildi. Dış Takip No: ${rmaCode}`]
-        };
-      }
-      return record;
+      const currentNotes = Array.isArray(record.technician_notes)
+        ? record.technician_notes
+        : (record.technician_notes ? [record.technician_notes] : []);
+
+      const historyEntry: StatusHistoryEntry = {
+        status: RepairStatus.IN_WARRANTY,
+        timestamp: new Date(),
+        note: `Tedarikçiye sevk: ${supplierName}, RMA: ${rmaCode}`
+      };
+
+      const currentHistory = record.statusHistory || [];
+
+      return {
+        ...record,
+        status: RepairStatus.IN_WARRANTY,
+        is_warranty_claim: true,
+        supplier_name: supplierName,
+        external_rma_code: rmaCode,
+        warranty_result: 'pending',
+        updated_at: new Date(),
+        statusHistory: [...currentHistory, historyEntry],
+        technician_notes: [...currentNotes, `Tedarikçiye (${supplierName}) sevk edildi. Dış Takip No: ${rmaCode}`]
+      };
     }));
   };
 
-  /**
-   * Yeni: Garantiyi Sonuçlandır
-   */
   const concludeWarranty = (trackingCode: string, result: WarrantyResult, notes: string, swapSerial?: string) => {
     setRepairRecords(prev => prev.map(record => {
-      if (record.tracking_code === trackingCode) {
-        const currentNotes = Array.isArray(record.technician_notes) 
-            ? record.technician_notes 
-            : (record.technician_notes ? [record.technician_notes] : []);
-        
-        let nextStatus = RepairStatus.COMPLETED;
-        if (result === 'rejected') nextStatus = RepairStatus.IN_PROGRESS; // Ret gelince tekrar incelemeye düşer
-        
-        return {
-            ...record,
-            status: nextStatus,
-            warranty_result: result,
-            swap_device_serial: swapSerial,
-            updated_at: new Date(),
-            technician_notes: [...currentNotes, `Garanti Sonuçlandı: ${result.toUpperCase()}. Not: ${notes} ${swapSerial ? `(Yeni Seri No: ${swapSerial})` : ''}`]
-        };
-      }
-      return record;
+      if (record.tracking_code !== trackingCode) return record;
+
+      const currentNotes = Array.isArray(record.technician_notes)
+        ? record.technician_notes
+        : (record.technician_notes ? [record.technician_notes] : []);
+
+      let nextStatus = RepairStatus.COMPLETED;
+      if (result === 'rejected') nextStatus = RepairStatus.IN_PROGRESS;
+
+      const historyEntry: StatusHistoryEntry = {
+        status: nextStatus,
+        timestamp: new Date(),
+        note: `Garanti sonuçlandı: ${result.toUpperCase()}. ${notes}`
+      };
+
+      const currentHistory = record.statusHistory || [];
+
+      return {
+        ...record,
+        status: nextStatus,
+        warranty_result: result,
+        swap_device_serial: swapSerial,
+        updated_at: new Date(),
+        statusHistory: [...currentHistory, historyEntry],
+        technician_notes: [...currentNotes, `Garanti Sonuçlandı: ${result.toUpperCase()}. Not: ${notes} ${swapSerial ? `(Yeni Seri No: ${swapSerial})` : ''}`]
+      };
     }));
   };
-
 
   const generateServiceLabel = (record: RepairRecord) => {
     const qrUrl = generateRepairQRLink(record.tracking_code);
@@ -195,16 +325,18 @@ export const RepairProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   return (
-    <RepairContext.Provider value={{ 
-      repairRecords, 
-      createRepairRequest, 
-      checkStatus, 
-      updateRepairStatus, 
-      assignTechnician, 
-      sendToPartner, 
+    <RepairContext.Provider value={{
+      repairRecords,
+      createRepairRequest,
+      createRepairFromAdmin,
+      checkStatus,
+      updateRepairStatus,
+      getFilteredRepairs,
+      assignTechnician,
+      sendToPartner,
       sendToWarranty,
       concludeWarranty,
-      generateServiceLabel 
+      generateServiceLabel
     }}>
       {children}
     </RepairContext.Provider>
