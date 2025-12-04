@@ -1,122 +1,168 @@
-
-import React, { useState } from 'react';
-import { useProducts } from '../context/ProductContext';
+import React, { useState, useMemo } from 'react';
+import { useProducts, ProductFilters } from '../context/ProductContext';
 import { useAuth } from '../context/AuthContext';
 import { useRepair } from '../context/RepairContext';
 import { useOrder } from '../context/OrderContext';
 import { ProductCategory, Product, UserRole, RepairStatus, OrderStatus, Order, RepairRecord, WarrantyResult } from '../types';
 import { formatCurrency } from '../utils/pricing';
 import SEO from '../components/SEO';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { useToast } from '../components/Toast';
+
+const ITEMS_PER_PAGE = 10;
 
 const AdminDashboard: React.FC = () => {
   const { user, users, approveDealer } = useAuth();
-  const { products, addProduct, updateStock } = useProducts();
+  const { products, addProduct, updateProduct, deleteProduct, updateStock, getFilteredProducts } = useProducts();
   const { repairRecords, updateRepairStatus, assignTechnician, generateServiceLabel, sendToWarranty, concludeWarranty } = useRepair();
   const { orders, updateOrderStatus } = useOrder();
+  const { showToast, ToastContainer } = useToast();
   
-  const [activeTab, setActiveTab] = useState<'products' | 'dealers' | 'repairs' | 'orders'>('products');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'dealers' | 'repairs' | 'orders'>('dashboard');
+  
+  // --- Pagination ---
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  // --- Filters ---
+  const [filters, setFilters] = useState<ProductFilters>({
+    search: '',
+    category: 'all',
+    stockStatus: 'all'
+  });
+
+  // --- Modals ---
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; productId: string; productName: string }>({
+    isOpen: false, productId: '', productName: ''
+  });
   
   // --- Warranty / RMA Modals State ---
   const [rmaModalOpen, setRmaModalOpen] = useState(false);
   const [rmaConcludeModalOpen, setRmaConcludeModalOpen] = useState(false);
   const [selectedRepair, setSelectedRepair] = useState<RepairRecord | null>(null);
-  
-  // RMA Form Data
   const [rmaFormData, setRmaFormData] = useState({ supplier: '', rmaCode: '' });
   const [concludeData, setConcludeData] = useState({ result: 'repaired' as WarrantyResult, notes: '', swapSerial: '' });
 
   // --- Product Form State ---
   const [newProduct, setNewProduct] = useState({
-    name: '',
-    sku: '',
-    shelf_location: '',
-    price_usd: '',
-    stock: '',
-    category: ProductCategory.SCREEN,
-    models: ''
+    name: '', sku: '', shelf_location: '', price_usd: '', stock: '',
+    category: ProductCategory.SCREEN, models: '', critical_limit: '3', dealer_discount: '10'
   });
 
   const technicians = ["Ahmet Usta", "Mehmet Ç.", "Ayşe Tek.", "Stajyer Can"];
   const suppliers = ["Arena Bilgisayar", "KVK Teknoloji", "Penta", "Asus Türkiye", "MSI ServisPoint"];
 
+  // --- Computed Data ---
+  const filteredProducts = useMemo(() => getFilteredProducts(filters), [products, filters]);
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredProducts.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredProducts, currentPage]);
+
+  const pendingDealers = users.filter(u => u.role === UserRole.DEALER && !u.is_approved);
+  const criticalStockProducts = products.filter(p => p.stock <= p.critical_limit);
+  const activeRepairs = repairRecords.filter(r => r.status !== RepairStatus.DELIVERED && r.status !== RepairStatus.CANCELLED);
+
+  // --- Stats ---
+  const stats = useMemo(() => ({
+    totalProducts: products.length,
+    criticalStock: criticalStockProducts.length,
+    activeRepairs: activeRepairs.length,
+    pendingDealers: pendingDealers.length,
+    totalOrders: orders.length,
+    pendingOrders: orders.filter(o => o.status === OrderStatus.PROCESSING).length,
+    totalRevenue: orders.reduce((sum, o) => sum + o.totalAmount, 0),
+  }), [products, criticalStockProducts, activeRepairs, pendingDealers, orders]);
+
+  // --- Auth Check ---
   if (user?.role !== UserRole.ADMIN) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <SEO title="Erişim Engellendi" />
         <div className="text-center">
-          <div className="text-4xl mb-2">🔒</div>
-          <h2 className="text-xl font-bold text-slate-800">Erişim Engellendi</h2>
-          <p className="text-slate-500">Bu sayfayı görüntülemek için Admin olmalısınız.</p>
+          <div className="text-6xl mb-4">🔒</div>
+          <h2 className="text-2xl font-bold text-slate-800">Erişim Engellendi</h2>
+          <p className="text-slate-500 mt-2">Bu sayfayı görüntülemek için Admin olmalısınız.</p>
         </div>
       </div>
     );
   }
 
+  // --- Handlers ---
   const handleAddProduct = (e: React.FormEvent) => {
     e.preventDefault();
-
-    // BULK PASTE LOGIC: Split by both Comma (,) and Newline (\n) to support Excel paste
-    const modelList = newProduct.models
-      .split(/[\n,]+/) // Regex: Split by newline OR comma
-      .map(s => s.trim()) // Remove whitespace
-      .filter(s => s.length > 0); // Remove empty lines
+    const modelList = newProduct.models.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
 
     const productToAdd: Product = {
-      id: '', // Will be generated in Context
+      id: '',
       name: newProduct.name,
       sku: newProduct.sku,
       shelf_location: newProduct.shelf_location,
       category: newProduct.category,
       description: 'Yeni eklenen ürün',
-      image_url: 'https://picsum.photos/200/300', // Placeholder
+      image_url: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400',
       price_usd: parseFloat(newProduct.price_usd),
       stock: parseInt(newProduct.stock),
-      dealer_discount_percent: 10,
+      dealer_discount_percent: parseInt(newProduct.dealer_discount) || 10,
       vat_rate: 0.20,
-      critical_limit: 3,
+      critical_limit: parseInt(newProduct.critical_limit) || 3,
       compatible_models: modelList
     };
 
     addProduct(productToAdd);
-    setNewProduct({ name: '', sku: '', shelf_location: '', price_usd: '', stock: '', category: ProductCategory.SCREEN, models: '' });
-    alert(`Ürün ve ${modelList.length} adet uyumlu model başarıyla eklendi!`);
+    setNewProduct({ name: '', sku: '', shelf_location: '', price_usd: '', stock: '', category: ProductCategory.SCREEN, models: '', critical_limit: '3', dealer_discount: '10' });
+    showToast(`"${productToAdd.name}" başarıyla eklendi!`, 'success');
   };
 
-  // --- Warranty Handlers ---
+  const handleEditProduct = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+
+    updateProduct(editingProduct.id, editingProduct);
+    setEditingProduct(null);
+    showToast('Ürün güncellendi!', 'success');
+  };
+
+  const handleDeleteProduct = () => {
+    deleteProduct(deleteConfirm.productId);
+    setDeleteConfirm({ isOpen: false, productId: '', productName: '' });
+    showToast('Ürün silindi!', 'success');
+  };
+
   const openWarrantyModal = (record: RepairRecord) => {
     setSelectedRepair(record);
     if (record.status === RepairStatus.IN_WARRANTY) {
-        // Already in warranty, open conclusion modal
-        setRmaConcludeModalOpen(true);
+      setRmaConcludeModalOpen(true);
     } else {
-        // New warranty process
-        setRmaFormData({ supplier: '', rmaCode: '' });
-        setRmaModalOpen(true);
+      setRmaFormData({ supplier: '', rmaCode: '' });
+      setRmaModalOpen(true);
     }
   };
 
   const handleSubmitRma = () => {
     if (selectedRepair && rmaFormData.supplier && rmaFormData.rmaCode) {
-        sendToWarranty(selectedRepair.tracking_code, rmaFormData.supplier, rmaFormData.rmaCode);
-        setRmaModalOpen(false);
-        setSelectedRepair(null);
+      sendToWarranty(selectedRepair.tracking_code, rmaFormData.supplier, rmaFormData.rmaCode);
+      setRmaModalOpen(false);
+      setSelectedRepair(null);
+      showToast('Cihaz garantiye gönderildi!', 'success');
     }
   };
 
   const handleSubmitConclusion = () => {
     if (selectedRepair) {
-        concludeWarranty(selectedRepair.tracking_code, concludeData.result, concludeData.notes, concludeData.swapSerial);
-        setRmaConcludeModalOpen(false);
-        setSelectedRepair(null);
-        setConcludeData({ result: 'repaired', notes: '', swapSerial: '' });
+      concludeWarranty(selectedRepair.tracking_code, concludeData.result, concludeData.notes, concludeData.swapSerial);
+      setRmaConcludeModalOpen(false);
+      setSelectedRepair(null);
+      setConcludeData({ result: 'repaired', notes: '', swapSerial: '' });
+      showToast('Garanti süreci kapatıldı!', 'success');
     }
   };
 
-  // Helper for Badge Colors
   const getStatusBadge = (status: OrderStatus) => {
     switch(status) {
-      case OrderStatus.PROCESSING: return 'bg-yellow-100 text-yellow-700';
+      case OrderStatus.PROCESSING: return 'bg-amber-100 text-amber-700';
       case OrderStatus.SHIPPED: return 'bg-blue-100 text-blue-700';
       case OrderStatus.DELIVERED: return 'bg-green-100 text-green-700';
       case OrderStatus.CANCELLED: return 'bg-red-100 text-red-700';
@@ -124,434 +170,711 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // --- Filter Logic ---
-  const pendingDealers = users.filter(u => u.role === UserRole.DEALER && !u.is_approved);
-  const criticalStockProducts = products.filter(p => p.stock <= p.critical_limit);
-  
+  // Reset page when filters change
+  const handleFilterChange = (newFilters: Partial<ProductFilters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters }));
+    setCurrentPage(1);
+  };
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 min-h-screen relative">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
       <SEO title="Yönetim Paneli" />
-      <header className="mb-10">
+      <ToastContainer />
+      
+      {/* Header */}
+      <header className="mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900">Yönetim Paneli</h1>
-        <p className="text-slate-500 mt-2">NotebookPro sistem parametrelerini buradan yönetebilirsiniz.</p>
+        <p className="text-slate-500 mt-1">NotebookPro operasyon merkezi</p>
       </header>
 
-      {/* STOCK ALERTS WIDGET */}
-      {criticalStockProducts.length > 0 && (
-        <div className="mb-8 bg-red-50 border border-red-100 rounded-2xl p-6 animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center gap-3 mb-4">
-             <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center text-white font-bold">!</div>
-             <h3 className="font-bold text-red-900 text-lg">Kritik Stok Uyarıları</h3>
+      {/* Tabs */}
+      <div className="flex gap-1 mb-8 bg-slate-100 p-1 rounded-xl w-fit">
+        {[
+          { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+          { id: 'products', label: 'Ürünler', icon: '📦' },
+          { id: 'dealers', label: 'Bayiler', icon: '🏢', badge: pendingDealers.length },
+          { id: 'repairs', label: 'Servis', icon: '🔧', badge: activeRepairs.length },
+          { id: 'orders', label: 'Siparişler', icon: '🛒' },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 ${
+              activeTab === tab.id 
+                ? 'bg-white text-slate-900 shadow-sm' 
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>{tab.icon}</span>
+            <span className="hidden sm:inline">{tab.label}</span>
+            {tab.badge ? (
+              <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                {tab.badge}
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+
+      {/* ========== DASHBOARD TAB ========== */}
+      {activeTab === 'dashboard' && (
+        <div className="space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard title="Toplam Ürün" value={stats.totalProducts} icon="📦" color="blue" />
+            <StatCard title="Kritik Stok" value={stats.criticalStock} icon="⚠️" color="red" />
+            <StatCard title="Aktif Servis" value={stats.activeRepairs} icon="🔧" color="amber" />
+            <StatCard title="Bekleyen Bayi" value={stats.pendingDealers} icon="🏢" color="purple" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {criticalStockProducts.map(p => (
-              <div key={p.id} className="bg-white p-3 rounded-xl border border-red-100 shadow-sm flex justify-between items-center">
-                 <div>
-                    <p className="font-bold text-slate-800 text-sm truncate max-w-[150px]">{p.name}</p>
-                    <p className="text-xs text-slate-500">{p.sku}</p>
-                 </div>
-                 <div className="text-right">
-                    <p className="text-2xl font-bold text-red-600">{p.stock}</p>
-                    <p className="text-[10px] text-red-400">Limit: {p.critical_limit}</p>
-                 </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <StatCard title="Toplam Sipariş" value={stats.totalOrders} subtitle={`${stats.pendingOrders} beklemede`} icon="🛒" color="green" />
+            <StatCard title="Toplam Ciro" value={formatCurrency(stats.totalRevenue)} icon="💰" color="emerald" large />
+          </div>
+
+          {/* Critical Stock Alerts */}
+          {criticalStockProducts.length > 0 && (
+            <div className="bg-red-50 border border-red-100 rounded-2xl p-6">
+              <h3 className="font-bold text-red-900 text-lg mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center text-white text-sm">!</span>
+                Kritik Stok Uyarıları
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {criticalStockProducts.slice(0, 6).map(p => (
+                  <div key={p.id} className="bg-white p-3 rounded-xl border border-red-100 flex justify-between items-center">
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-800 text-sm truncate">{p.name}</p>
+                      <p className="text-xs text-slate-500">{p.sku}</p>
+                    </div>
+                    <div className="text-right ml-2">
+                      <p className="text-2xl font-bold text-red-600">{p.stock}</p>
+                      <p className="text-[10px] text-red-400">Limit: {p.critical_limit}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex space-x-4 mb-8 border-b border-slate-200 overflow-x-auto">
-        <button onClick={() => setActiveTab('products')} className={`pb-3 px-4 font-medium text-sm whitespace-nowrap transition ${activeTab === 'products' ? 'text-red-600 border-b-2 border-red-600' : 'text-slate-500 hover:text-slate-800'}`}>Ürün Yönetimi</button>
-        <button onClick={() => setActiveTab('dealers')} className={`pb-3 px-4 font-medium text-sm whitespace-nowrap transition ${activeTab === 'dealers' ? 'text-red-600 border-b-2 border-red-600' : 'text-slate-500 hover:text-slate-800'}`}>Bayi Onayları {pendingDealers.length > 0 && <span className="ml-2 bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full">{pendingDealers.length}</span>}</button>
-        <button onClick={() => setActiveTab('repairs')} className={`pb-3 px-4 font-medium text-sm whitespace-nowrap transition ${activeTab === 'repairs' ? 'text-red-600 border-b-2 border-red-600' : 'text-slate-500 hover:text-slate-800'}`}>Servis Takip</button>
-        <button onClick={() => setActiveTab('orders')} className={`pb-3 px-4 font-medium text-sm whitespace-nowrap transition ${activeTab === 'orders' ? 'text-red-600 border-b-2 border-red-600' : 'text-slate-500 hover:text-slate-800'}`}>Siparişler</button>
-      </div>
-
-      {/* CONTENT: PRODUCTS */}
+      {/* ========== PRODUCTS TAB ========== */}
       {activeTab === 'products' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Form */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Add Product Form */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-fit">
-            <h3 className="font-bold text-lg text-slate-800 mb-4">Yeni Ürün Ekle</h3>
+            <h3 className="font-bold text-lg text-slate-800 mb-4">➕ Yeni Ürün Ekle</h3>
             <form onSubmit={handleAddProduct} className="space-y-4">
-               <div>
-                 <label className="block text-xs font-bold text-slate-500 mb-1">Ürün Adı</label>
-                 <input required className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:border-red-500 outline-none" 
-                    value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
-               </div>
-               <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">SKU (Stok Kodu)</label>
-                    <input required className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:border-red-500 outline-none" 
-                        value={newProduct.sku} onChange={e => setNewProduct({...newProduct, sku: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Raf Yeri</label>
-                    <input required placeholder="Örn: A-01" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:border-red-500 outline-none" 
-                        value={newProduct.shelf_location} onChange={e => setNewProduct({...newProduct, shelf_location: e.target.value})} />
-                  </div>
-               </div>
-               <div className="grid grid-cols-2 gap-4">
-                  <div>
-                     <label className="block text-xs font-bold text-slate-500 mb-1">Kategori</label>
-                     <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:border-red-500 outline-none"
-                        value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value as ProductCategory})}>
-                        {Object.values(ProductCategory).map(c => <option key={c} value={c}>{c}</option>)}
-                     </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Fiyat (USD)</label>
-                    <input required type="number" step="0.01" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:border-red-500 outline-none" 
-                        value={newProduct.price_usd} onChange={e => setNewProduct({...newProduct, price_usd: e.target.value})} />
-                  </div>
-               </div>
-               <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Stok Adedi</label>
-                    <input required type="number" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:border-red-500 outline-none" 
-                        value={newProduct.stock} onChange={e => setNewProduct({...newProduct, stock: e.target.value})} />
-               </div>
-               <div>
-                 <label className="block text-xs font-bold text-slate-500 mb-1 flex justify-between">
-                    <span>Uyumlu Modeller</span>
-                    <span className="text-red-500 font-normal">Toplu Yapıştır (Excel)</span>
-                 </label>
-                 <textarea 
-                    placeholder="Excel'den kopyalayıp yapıştırabilirsiniz.&#10;Asus X550&#10;Lenovo Z580&#10;Dell 3521" 
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:border-red-500 outline-none font-mono" 
-                    rows={5}
-                    value={newProduct.models} 
-                    onChange={e => setNewProduct({...newProduct, models: e.target.value})} 
-                 />
-                 <p className="text-[10px] text-slate-400 mt-1">Her satır bir model olarak kaydedilir.</p>
-               </div>
-               <button type="submit" className="w-full bg-slate-900 text-white font-bold py-3 rounded-lg hover:bg-red-600 transition">
-                 Ürünü Sisteme Kaydet
-               </button>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Ürün Adı *</label>
+                <input required className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition"
+                  value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">SKU *</label>
+                  <input required className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
+                    value={newProduct.sku} onChange={e => setNewProduct({...newProduct, sku: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Raf Yeri</label>
+                  <input placeholder="A-01" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
+                    value={newProduct.shelf_location} onChange={e => setNewProduct({...newProduct, shelf_location: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Kategori</label>
+                  <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
+                    value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value as ProductCategory})}>
+                    {Object.values(ProductCategory).map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Fiyat (USD) *</label>
+                  <input required type="number" step="0.01" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
+                    value={newProduct.price_usd} onChange={e => setNewProduct({...newProduct, price_usd: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Stok *</label>
+                  <input required type="number" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
+                    value={newProduct.stock} onChange={e => setNewProduct({...newProduct, stock: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Kritik</label>
+                  <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
+                    value={newProduct.critical_limit} onChange={e => setNewProduct({...newProduct, critical_limit: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Bayi %</label>
+                  <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
+                    value={newProduct.dealer_discount} onChange={e => setNewProduct({...newProduct, dealer_discount: e.target.value})} />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">
+                  Uyumlu Modeller <span className="text-red-500 font-normal">(Excel yapıştır)</span>
+                </label>
+                <textarea
+                  placeholder="Her satır bir model..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none font-mono"
+                  rows={4}
+                  value={newProduct.models}
+                  onChange={e => setNewProduct({...newProduct, models: e.target.value})}
+                />
+              </div>
+
+              <button type="submit" className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-red-600 transition shadow-lg">
+                Ürünü Kaydet
+              </button>
             </form>
           </div>
 
-          {/* List */}
-          <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-            <h3 className="font-bold text-lg text-slate-800 mb-4">Envanter Listesi</h3>
+          {/* Product List */}
+          <div className="xl:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <h3 className="font-bold text-lg text-slate-800">📦 Ürün Listesi</h3>
+              <div className="text-sm text-slate-500">
+                {filteredProducts.length} ürün bulundu
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Ara: isim, SKU, model..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none"
+                  value={filters.search}
+                  onChange={e => handleFilterChange({ search: e.target.value })}
+                />
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              
+              <select
+                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-red-500 outline-none"
+                value={filters.category}
+                onChange={e => handleFilterChange({ category: e.target.value as ProductCategory | 'all' })}
+              >
+                <option value="all">Tüm Kategoriler</option>
+                {Object.values(ProductCategory).map(c => (
+                  <option key={c} value={c}>{c.toUpperCase()}</option>
+                ))}
+              </select>
+
+              <select
+                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-red-500 outline-none"
+                value={filters.stockStatus}
+                onChange={e => handleFilterChange({ stockStatus: e.target.value as any })}
+              >
+                <option value="all">Tüm Stok Durumu</option>
+                <option value="in_stock">Stokta</option>
+                <option value="critical">Kritik Seviye</option>
+                <option value="out_of_stock">Tükendi</option>
+              </select>
+            </div>
+
+            {/* Table */}
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-slate-400 uppercase bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-3 rounded-tl-lg">Ürün Adı</th>
-                    <th className="px-4 py-3">SKU</th>
-                    <th className="px-4 py-3">Raf</th>
-                    <th className="px-4 py-3">Fiyat (USD)</th>
-                    <th className="px-4 py-3">Uyumlu Model</th>
-                    <th className="px-4 py-3 rounded-tr-lg">Stok</th>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
+                    <th className="px-4 py-3 text-left rounded-tl-lg">Ürün</th>
+                    <th className="px-4 py-3 text-left">SKU / Raf</th>
+                    <th className="px-4 py-3 text-right">Fiyat</th>
+                    <th className="px-4 py-3 text-center">Stok</th>
+                    <th className="px-4 py-3 text-right rounded-tr-lg">İşlem</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map(p => (
-                    <tr key={p.id} className="border-b border-slate-50 hover:bg-slate-50">
-                      <td className="px-4 py-3 font-medium text-slate-900 max-w-xs truncate">{p.name}</td>
-                      <td className="px-4 py-3 text-slate-500 font-mono text-xs">{p.sku}</td>
-                      <td className="px-4 py-3 text-slate-600 font-mono text-xs font-bold bg-slate-100 rounded-md inline-block mt-2 px-2">{p.shelf_location || 'N/A'}</td>
-                      <td className="px-4 py-3 font-mono text-slate-600">${p.price_usd}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400">
-                        {p.compatible_models.length} Adet
+                  {paginatedProducts.map(p => (
+                    <tr key={p.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-slate-900 max-w-[200px] truncate">{p.name}</div>
+                        <div className="text-xs text-slate-400">{p.compatible_models.length} uyumlu model</div>
                       </td>
                       <td className="px-4 py-3">
-                        <input 
-                          type="number" 
-                          className={`w-16 border rounded p-1 text-center focus:border-red-500 outline-none ${p.stock <= p.critical_limit ? 'bg-red-50 border-red-300 text-red-700 font-bold' : 'bg-white'}`}
-                          value={p.stock}
-                          onChange={(e) => updateStock(p.id, parseInt(e.target.value))}
-                        />
+                        <div className="font-mono text-xs text-slate-600">{p.sku}</div>
+                        <div className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded w-fit mt-1">{p.shelf_location || 'N/A'}</div>
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-slate-700">${p.price_usd}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex items-center justify-center w-10 h-8 rounded-lg font-bold text-sm ${
+                          p.stock === 0 ? 'bg-red-100 text-red-700' :
+                          p.stock <= p.critical_limit ? 'bg-amber-100 text-amber-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {p.stock}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setEditingProduct({ ...p })}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                            title="Düzenle"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm({ isOpen: true, productId: p.id, productName: p.name })}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                            title="Sil"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
+                <div className="text-sm text-slate-500">
+                  Sayfa {currentPage} / {totalPages}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-200 transition"
+                  >
+                    ← Önceki
+                  </button>
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const page = i + 1;
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-8 h-8 rounded-lg text-sm font-medium transition ${
+                          currentPage === page
+                            ? 'bg-red-600 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-200 transition"
+                  >
+                    Sonraki →
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========== DEALERS TAB ========== */}
+      {activeTab === 'dealers' && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          <h3 className="font-bold text-lg text-slate-800 mb-4">🏢 Onay Bekleyen Bayiler</h3>
+          {pendingDealers.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-5xl mb-4">✅</div>
+              <p className="text-slate-500">Tüm başvurular işlendi!</p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {pendingDealers.map(d => (
+                <div key={d.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 rounded-xl gap-4">
+                  <div>
+                    <h4 className="font-bold text-slate-800">{d.name}</h4>
+                    <p className="text-xs text-slate-500">{d.email} | {d.phone}</p>
+                    {d.company_details && (
+                      <div className="mt-2 text-xs bg-white p-2 rounded inline-block text-slate-600 border border-slate-100">
+                        {d.company_details.taxTitle} - VKN: {d.company_details.taxNumber}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { approveDealer(d.id); showToast(`${d.name} onaylandı!`, 'success'); }}
+                    className="bg-green-600 text-white px-6 py-2 rounded-xl text-sm font-bold hover:bg-green-700 transition shadow-md"
+                  >
+                    ✓ Onayla
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========== REPAIRS TAB ========== */}
+      {activeTab === 'repairs' && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          <h3 className="font-bold text-lg text-slate-800 mb-4">🔧 Servis Takip Merkezi</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
+                  <th className="px-4 py-3 text-left rounded-tl-lg">İşlemler</th>
+                  <th className="px-4 py-3 text-left">Takip No</th>
+                  <th className="px-4 py-3 text-left">Müşteri / Cihaz</th>
+                  <th className="px-4 py-3 text-left">Arıza</th>
+                  <th className="px-4 py-3 text-left">Teknisyen</th>
+                  <th className="px-4 py-3 text-left rounded-tr-lg">Durum</th>
+                </tr>
+              </thead>
+              <tbody>
+                {repairRecords.map(r => (
+                  <tr key={r.id} className={`border-b border-slate-50 hover:bg-slate-50 ${r.status === RepairStatus.IN_WARRANTY ? 'bg-orange-50' : ''}`}>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <button onClick={() => generateServiceLabel(r)} className="text-xs bg-slate-800 text-white px-2 py-1 rounded hover:bg-slate-700">
+                          Etiket
+                        </button>
+                        <button
+                          onClick={() => openWarrantyModal(r)}
+                          className={`text-xs px-2 py-1 rounded ${r.status === RepairStatus.IN_WARRANTY ? 'bg-green-600 text-white' : 'bg-orange-100 text-orange-700'}`}
+                        >
+                          {r.status === RepairStatus.IN_WARRANTY ? 'Sonuçlandır' : 'RMA'}
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-red-600 font-bold">{r.tracking_code}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-slate-900">{r.customer_name}</div>
+                      <div className="text-xs text-slate-500">{r.device_brand} {r.device_model}</div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">{r.issue_description}</td>
+                    <td className="px-4 py-3">
+                      <select
+                        className="bg-white border border-slate-200 text-xs rounded p-1 outline-none"
+                        value={r.assigned_technician || ''}
+                        onChange={e => assignTechnician(r.tracking_code, e.target.value)}
+                      >
+                        <option value="">Atanmadı</option>
+                        {technicians.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-4 py-3">
+                      <select
+                        className="bg-slate-100 border-none text-xs font-medium rounded p-2 outline-none"
+                        value={r.status}
+                        onChange={e => updateRepairStatus(r.tracking_code, e.target.value as RepairStatus)}
+                      >
+                        {Object.values(RepairStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========== ORDERS TAB ========== */}
+      {activeTab === 'orders' && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          <h3 className="font-bold text-lg text-slate-800 mb-4">🛒 Sipariş Yönetimi</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
+                  <th className="px-4 py-3 text-left rounded-tl-lg">Sipariş No</th>
+                  <th className="px-4 py-3 text-left">Müşteri</th>
+                  <th className="px-4 py-3 text-right">Tutar</th>
+                  <th className="px-4 py-3 text-left">Tarih</th>
+                  <th className="px-4 py-3 text-left">Durum</th>
+                  <th className="px-4 py-3 text-right rounded-tr-lg">İşlem</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.length === 0 ? (
+                  <tr><td colSpan={6} className="text-center py-12 text-slate-500">Henüz sipariş yok</td></tr>
+                ) : orders.map(order => (
+                  <tr key={order.id} className="border-b border-slate-50 hover:bg-slate-50">
+                    <td className="px-4 py-3 font-mono font-bold text-slate-700">{order.id}</td>
+                    <td className="px-4 py-3 text-slate-800 font-medium">{order.customerName}</td>
+                    <td className="px-4 py-3 text-right font-bold text-slate-900">{formatCurrency(order.totalAmount)}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500">{new Date(order.createdAt).toLocaleDateString('tr-TR')}</td>
+                    <td className="px-4 py-3">
+                      <select
+                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase outline-none ${getStatusBadge(order.status)}`}
+                        value={order.status}
+                        onChange={e => updateOrderStatus(order.id, e.target.value as OrderStatus)}
+                      >
+                        {Object.values(OrderStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button onClick={() => setSelectedOrder(order)} className="text-slate-400 hover:text-red-600">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========== MODALS ========== */}
+
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-slate-800">Ürün Düzenle</h3>
+              <button onClick={() => setEditingProduct(null)} className="text-slate-400 hover:text-red-600 text-xl">✕</button>
+            </div>
+            <form onSubmit={handleEditProduct} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Ürün Adı</label>
+                <input className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                  value={editingProduct.name}
+                  onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">SKU</label>
+                  <input className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                    value={editingProduct.sku}
+                    onChange={e => setEditingProduct({ ...editingProduct, sku: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Raf Yeri</label>
+                  <input className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                    value={editingProduct.shelf_location}
+                    onChange={e => setEditingProduct({ ...editingProduct, shelf_location: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Fiyat (USD)</label>
+                  <input type="number" step="0.01" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                    value={editingProduct.price_usd}
+                    onChange={e => setEditingProduct({ ...editingProduct, price_usd: parseFloat(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Stok</label>
+                  <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                    value={editingProduct.stock}
+                    onChange={e => setEditingProduct({ ...editingProduct, stock: parseInt(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Kritik Limit</label>
+                  <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                    value={editingProduct.critical_limit}
+                    onChange={e => setEditingProduct({ ...editingProduct, critical_limit: parseInt(e.target.value) })} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Kategori</label>
+                <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                  value={editingProduct.category}
+                  onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value as ProductCategory })}>
+                  {Object.values(ProductCategory).map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Bayi İndirimi (%)</label>
+                <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+                  value={editingProduct.dealer_discount_percent || 0}
+                  onChange={e => setEditingProduct({ ...editingProduct, dealer_discount_percent: parseInt(e.target.value) })} />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => setEditingProduct(null)} className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-semibold">
+                  İptal
+                </button>
+                <button type="submit" className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700">
+                  Kaydet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title="Ürünü Sil"
+        message={`"${deleteConfirm.productName}" ürününü silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+        confirmText="Evet, Sil"
+        cancelText="Vazgeç"
+        confirmStyle="danger"
+        onConfirm={handleDeleteProduct}
+        onCancel={() => setDeleteConfirm({ isOpen: false, productId: '', productName: '' })}
+      />
+
+      {/* Order Detail Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-slate-800">Sipariş Detayı</h3>
+              <button onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-red-600">✕</button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <p className="text-xs text-slate-500 uppercase font-bold">Sipariş No</p>
+                <p className="font-mono text-slate-900">{selectedOrder.id}</p>
+              </div>
+              <div className="mb-6">
+                <p className="text-xs text-slate-500 uppercase font-bold mb-2">Ürünler</p>
+                <div className="space-y-2">
+                  {selectedOrder.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between text-sm border-b border-slate-50 pb-2">
+                      <div>
+                        <span className="font-medium text-slate-800">{item.product.name}</span>
+                        <div className="text-xs text-slate-400">{item.product.sku}</div>
+                      </div>
+                      <div className="font-bold text-slate-600">x{item.quantity}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-between items-center bg-slate-900 text-white p-4 rounded-xl">
+                <span>Toplam Tutar</span>
+                <span className="font-bold text-xl">{formatCurrency(selectedOrder.totalAmount)}</span>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* CONTENT: DEALERS */}
-      {activeTab === 'dealers' && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-           <h3 className="font-bold text-lg text-slate-800 mb-4">Onay Bekleyen Bayi Başvuruları</h3>
-           {pendingDealers.length === 0 ? (
-             <p className="text-slate-500 text-center py-10">Şu anda onay bekleyen başvuru yok.</p>
-           ) : (
-             <div className="grid gap-4">
-                {pendingDealers.map(d => (
-                  <div key={d.id} className="flex items-center justify-between p-4 border border-slate-100 rounded-xl hover:border-red-100 hover:shadow-sm transition">
-                     <div>
-                        <h4 className="font-bold text-slate-800">{d.name}</h4>
-                        <p className="text-xs text-slate-500">{d.email} | {d.phone}</p>
-                        {d.company_details && (
-                          <div className="mt-2 text-xs bg-slate-50 p-2 rounded inline-block text-slate-600">
-                            {d.company_details.taxTitle} - VKN: {d.company_details.taxNumber}
-                          </div>
-                        )}
-                     </div>
-                     <button 
-                        onClick={() => approveDealer(d.id)}
-                        className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-600 transition shadow-green-200 shadow-md"
-                     >
-                        Onayla & Yetkilendir
-                     </button>
-                  </div>
-                ))}
-             </div>
-           )}
-        </div>
-      )}
-
-      {/* CONTENT: REPAIRS */}
-      {activeTab === 'repairs' && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-           <h3 className="font-bold text-lg text-slate-800 mb-4">Servis Takip Merkezi</h3>
-           <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-slate-400 uppercase bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-3 rounded-tl-lg">İşlemler</th>
-                    <th className="px-4 py-3">Takip No</th>
-                    <th className="px-4 py-3">Müşteri / Cihaz</th>
-                    <th className="px-4 py-3">Arıza</th>
-                    <th className="px-4 py-3">Teknisyen</th>
-                    <th className="px-4 py-3 rounded-tr-lg">Durum</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {repairRecords.map(r => (
-                    <tr key={r.id} className={`border-b border-slate-50 hover:bg-slate-50 ${r.status === RepairStatus.IN_WARRANTY ? 'bg-orange-50' : ''}`}>
-                      <td className="px-4 py-3 flex gap-2">
-                         <button onClick={() => generateServiceLabel(r)} className="text-xs bg-slate-800 text-white px-2 py-1 rounded hover:bg-red-600 transition">
-                           Etiket
-                         </button>
-                         <button 
-                            onClick={() => openWarrantyModal(r)} 
-                            className={`text-xs px-2 py-1 rounded transition ${r.status === RepairStatus.IN_WARRANTY ? 'bg-green-600 text-white' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'}`}
-                         >
-                           {r.status === RepairStatus.IN_WARRANTY ? 'Sonuçlandır' : 'Garanti/RMA'}
-                         </button>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-red-600 font-bold">{r.tracking_code}</td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-slate-900">{r.customer_name}</div>
-                        <div className="text-xs text-slate-500">{r.device_brand} {r.device_model}</div>
-                        {r.status === RepairStatus.IN_WARRANTY && r.supplier_name && (
-                            <div className="mt-1 text-[9px] bg-orange-100 text-orange-800 px-1 rounded w-fit">
-                                Tedarikçi: {r.supplier_name}
-                            </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 max-w-xs truncate" title={r.issue_description}>{r.issue_description}</td>
-                      <td className="px-4 py-3">
-                        <select
-                           className="bg-white border border-slate-200 text-xs rounded p-1 outline-none focus:border-red-500"
-                           value={r.assigned_technician || ''}
-                           onChange={(e) => assignTechnician(r.tracking_code, e.target.value)}
-                        >
-                           <option value="">Atanmadı</option>
-                           {technicians.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                      </td>
-                      <td className="px-4 py-3">
-                        <select 
-                          className={`bg-slate-100 border-none text-xs font-medium text-slate-700 rounded p-2 outline-none focus:ring-2 ring-red-200 cursor-pointer ${r.status === RepairStatus.IN_WARRANTY ? 'bg-orange-200 text-orange-900 font-bold' : ''}`}
-                          value={r.status}
-                          onChange={(e) => updateRepairStatus(r.tracking_code, e.target.value as RepairStatus)}
-                        >
-                          {Object.values(RepairStatus).map(status => (
-                            <option key={status} value={status}>{status}</option>
-                          ))}
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-           </div>
-        </div>
-      )}
-
-      {/* CONTENT: ORDERS */}
-      {activeTab === 'orders' && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-           <h3 className="font-bold text-lg text-slate-800 mb-4">Sipariş Yönetimi</h3>
-           <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-slate-400 uppercase bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-3 rounded-tl-lg">Sipariş No</th>
-                    <th className="px-4 py-3">Müşteri</th>
-                    <th className="px-4 py-3">Toplam Tutar</th>
-                    <th className="px-4 py-3">Tarih</th>
-                    <th className="px-4 py-3">Durum</th>
-                    <th className="px-4 py-3 rounded-tr-lg">İşlem</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.length === 0 ? (
-                    <tr><td colSpan={6} className="text-center py-8 text-slate-500">Henüz sipariş bulunmuyor.</td></tr>
-                  ) : orders.map(order => (
-                    <tr key={order.id} className="border-b border-slate-50 hover:bg-slate-50">
-                       <td className="px-4 py-3 font-mono font-bold text-slate-700">{order.id}</td>
-                       <td className="px-4 py-3 text-slate-800 font-medium">{order.customerName}</td>
-                       <td className="px-4 py-3 font-bold text-slate-900">{formatCurrency(order.totalAmount)}</td>
-                       <td className="px-4 py-3 text-xs text-slate-500">{new Date(order.createdAt).toLocaleDateString('tr-TR')}</td>
-                       <td className="px-4 py-3">
-                          <div className="relative">
-                            <select 
-                                className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider outline-none cursor-pointer ${getStatusBadge(order.status)}`}
-                                value={order.status}
-                                onChange={(e) => updateOrderStatus(order.id, e.target.value as OrderStatus)}
-                            >
-                                {Object.values(OrderStatus).map(s => <option key={s} value={s} className="bg-white text-slate-800">{s}</option>)}
-                            </select>
-                          </div>
-                       </td>
-                       <td className="px-4 py-3">
-                          <button 
-                            onClick={() => setSelectedOrder(order)}
-                            className="text-slate-400 hover:text-red-600 transition"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          </button>
-                       </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-           </div>
-        </div>
-      )}
-
-      {/* ORDER DETAIL MODAL */}
-      {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-              <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                 <h3 className="font-bold text-slate-800">Sipariş Detayı</h3>
-                 <button onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-red-600">✕</button>
-              </div>
-              <div className="p-6">
-                 <div className="mb-4">
-                    <p className="text-xs text-slate-500 uppercase font-bold">Sipariş No</p>
-                    <p className="font-mono text-slate-900">{selectedOrder.id}</p>
-                 </div>
-                 <div className="mb-6">
-                    <p className="text-xs text-slate-500 uppercase font-bold mb-2">Ürünler</p>
-                    <div className="space-y-2">
-                       {selectedOrder.items.map((item, idx) => (
-                         <div key={idx} className="flex justify-between text-sm border-b border-slate-50 pb-2 last:border-0">
-                            <div>
-                               <span className="font-medium text-slate-800">{item.product.name}</span>
-                               <div className="text-xs text-slate-400">{item.product.sku}</div>
-                            </div>
-                            <div className="font-bold text-slate-600">x{item.quantity}</div>
-                         </div>
-                       ))}
-                    </div>
-                 </div>
-                 <div className="flex justify-between items-center bg-slate-900 text-white p-4 rounded-xl">
-                    <span>Toplam Tutar</span>
-                    <span className="font-bold text-xl">{formatCurrency(selectedOrder.totalAmount)}</span>
-                 </div>
-              </div>
-           </div>
-        </div>
-      )}
-      
-      {/* WARRANTY SEND MODAL */}
+      {/* Warranty Send Modal */}
       {rmaModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-                <h3 className="font-bold text-lg text-slate-800 mb-4">Garantiye / Tedarikçiye Gönder</h3>
-                <p className="text-sm text-slate-500 mb-4">Cihazı yetkili servise veya tedarikçiye yönlendiriyorsunuz.</p>
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Tedarikçi / Yetkili Servis</label>
-                        <select 
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm outline-none focus:border-red-500"
-                            value={rmaFormData.supplier}
-                            onChange={(e) => setRmaFormData({...rmaFormData, supplier: e.target.value})}
-                        >
-                            <option value="">Firma Seçiniz</option>
-                            {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Dış Takip No (RMA Code)</label>
-                        <input 
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm outline-none focus:border-red-500"
-                            placeholder="Örn: KVK-123456"
-                            value={rmaFormData.rmaCode}
-                            onChange={(e) => setRmaFormData({...rmaFormData, rmaCode: e.target.value})}
-                        />
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                        <button onClick={() => setRmaModalOpen(false)} className="w-1/2 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs hover:bg-slate-200">İptal</button>
-                        <button onClick={handleSubmitRma} className="w-1/2 py-2 bg-orange-500 text-white rounded-lg font-bold text-xs hover:bg-orange-600 shadow-orange-200 shadow-md">Gönder</button>
-                    </div>
-                </div>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="font-bold text-lg text-slate-800 mb-4">Garantiye Gönder</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Tedarikçi</label>
+                <select
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"
+                  value={rmaFormData.supplier}
+                  onChange={e => setRmaFormData({ ...rmaFormData, supplier: e.target.value })}
+                >
+                  <option value="">Seçiniz</option>
+                  {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">RMA Kodu</label>
+                <input
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"
+                  value={rmaFormData.rmaCode}
+                  onChange={e => setRmaFormData({ ...rmaFormData, rmaCode: e.target.value })}
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button onClick={() => setRmaModalOpen(false)} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-sm">İptal</button>
+                <button onClick={handleSubmitRma} className="flex-1 py-2 bg-orange-500 text-white rounded-lg font-bold text-sm">Gönder</button>
+              </div>
             </div>
+          </div>
         </div>
       )}
 
-      {/* WARRANTY CONCLUDE MODAL */}
+      {/* Warranty Conclude Modal */}
       {rmaConcludeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-                <h3 className="font-bold text-lg text-slate-800 mb-4">Garanti Sürecini Sonuçlandır</h3>
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Sonuç</label>
-                        <select 
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm outline-none focus:border-red-500"
-                            value={concludeData.result}
-                            onChange={(e) => setConcludeData({...concludeData, result: e.target.value as WarrantyResult})}
-                        >
-                            <option value="repaired">Onarıldı (Repaired)</option>
-                            <option value="swapped">Değişim (Swap)</option>
-                            <option value="refunded">İade (Refund)</option>
-                            <option value="rejected">Ret (Rejected)</option>
-                        </select>
-                    </div>
-                    
-                    {concludeData.result === 'swapped' && (
-                        <div className="animate-in fade-in slide-in-from-top-2">
-                            <label className="block text-xs font-bold text-slate-500 mb-1">Yeni Cihaz Seri No</label>
-                            <input 
-                                className="w-full bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-sm outline-none focus:border-yellow-500"
-                                placeholder="Yeni Serial Number"
-                                value={concludeData.swapSerial}
-                                onChange={(e) => setConcludeData({...concludeData, swapSerial: e.target.value})}
-                            />
-                        </div>
-                    )}
-
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Açıklama / Notlar</label>
-                        <textarea 
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm outline-none focus:border-red-500"
-                            rows={3}
-                            value={concludeData.notes}
-                            onChange={(e) => setConcludeData({...concludeData, notes: e.target.value})}
-                        />
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                        <button onClick={() => setRmaConcludeModalOpen(false)} className="w-1/2 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs hover:bg-slate-200">İptal</button>
-                        <button onClick={handleSubmitConclusion} className="w-1/2 py-2 bg-green-600 text-white rounded-lg font-bold text-xs hover:bg-green-700 shadow-green-200 shadow-md">Kaydet ve Kapat</button>
-                    </div>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="font-bold text-lg text-slate-800 mb-4">Garanti Sonuçlandır</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Sonuç</label>
+                <select
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"
+                  value={concludeData.result}
+                  onChange={e => setConcludeData({ ...concludeData, result: e.target.value as WarrantyResult })}
+                >
+                  <option value="repaired">Onarıldı</option>
+                  <option value="swapped">Değişim</option>
+                  <option value="refunded">İade</option>
+                  <option value="rejected">Ret</option>
+                </select>
+              </div>
+              {concludeData.result === 'swapped' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Yeni Seri No</label>
+                  <input
+                    className="w-full bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-sm"
+                    value={concludeData.swapSerial}
+                    onChange={e => setConcludeData({ ...concludeData, swapSerial: e.target.value })}
+                  />
                 </div>
+              )}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Notlar</label>
+                <textarea
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"
+                  rows={3}
+                  value={concludeData.notes}
+                  onChange={e => setConcludeData({ ...concludeData, notes: e.target.value })}
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button onClick={() => setRmaConcludeModalOpen(false)} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-sm">İptal</button>
+                <button onClick={handleSubmitConclusion} className="flex-1 py-2 bg-green-600 text-white rounded-lg font-bold text-sm">Kaydet</button>
+              </div>
             </div>
+          </div>
         </div>
       )}
 
+    </div>
+  );
+};
+
+// Stats Card Component
+const StatCard: React.FC<{
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  icon: string;
+  color: 'blue' | 'red' | 'amber' | 'purple' | 'green' | 'emerald';
+  large?: boolean;
+}> = ({ title, value, subtitle, icon, color, large }) => {
+  const colors = {
+    blue: 'bg-blue-50 border-blue-100 text-blue-600',
+    red: 'bg-red-50 border-red-100 text-red-600',
+    amber: 'bg-amber-50 border-amber-100 text-amber-600',
+    purple: 'bg-purple-50 border-purple-100 text-purple-600',
+    green: 'bg-green-50 border-green-100 text-green-600',
+    emerald: 'bg-emerald-50 border-emerald-100 text-emerald-600',
+  };
+
+  return (
+    <div className={`${colors[color]} border rounded-2xl p-5`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-2xl">{icon}</span>
+        {subtitle && <span className="text-xs opacity-70">{subtitle}</span>}
+      </div>
+      <div className={`font-bold ${large ? 'text-2xl' : 'text-3xl'}`}>{value}</div>
+      <div className="text-xs mt-1 opacity-70">{title}</div>
     </div>
   );
 };

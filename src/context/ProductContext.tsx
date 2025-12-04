@@ -1,12 +1,22 @@
 import React, { createContext, useState, useContext, ReactNode } from 'react';
-import { Product } from '../types';
+import { Product, ProductCategory } from '../types';
 import { mockProducts } from '../data/mockData';
+
+// Filter interface
+export interface ProductFilters {
+  search: string;
+  category: ProductCategory | 'all';
+  stockStatus: 'all' | 'critical' | 'out_of_stock' | 'in_stock';
+}
 
 interface ProductContextType {
   products: Product[];
   addProduct: (product: Product) => void;
+  updateProduct: (productId: string, updates: Partial<Product>) => void;
+  deleteProduct: (productId: string) => void;
   updateStock: (productId: string, quantity: number) => void;
-  checkLowStock: () => Product[]; // Kritik stok kontrolü
+  checkLowStock: () => Product[];
+  getFilteredProducts: (filters: ProductFilters) => Product[];
 }
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
@@ -23,6 +33,22 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
     setProducts(prev => [...prev, newProduct]);
   };
 
+  /**
+   * Ürün Güncelleme
+   */
+  const updateProduct = (productId: string, updates: Partial<Product>) => {
+    setProducts(prev => prev.map(p => 
+      p.id === productId ? { ...p, ...updates } : p
+    ));
+  };
+
+  /**
+   * Ürün Silme
+   */
+  const deleteProduct = (productId: string) => {
+    setProducts(prev => prev.filter(p => p.id !== productId));
+  };
+
   const updateStock = (productId: string, quantity: number) => {
     setProducts(prev => prev.map(p => 
       p.id === productId ? { ...p, stock: quantity } : p
@@ -30,15 +56,53 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   /**
-   * Kural 2: checkLowStock Fonksiyonu
-   * Stoğu kritik limitin altına düşen ürünleri filtreler.
+   * Kritik Stok Kontrolü
    */
   const checkLowStock = (): Product[] => {
     return products.filter(p => p.stock <= p.critical_limit);
   };
 
+  /**
+   * Filtreleme Fonksiyonu
+   */
+  const getFilteredProducts = (filters: ProductFilters): Product[] => {
+    return products.filter(product => {
+      // Search filter
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchesSearch = 
+          product.name.toLowerCase().includes(searchLower) ||
+          product.sku.toLowerCase().includes(searchLower) ||
+          product.compatible_models.some(m => m.toLowerCase().includes(searchLower));
+        if (!matchesSearch) return false;
+      }
+
+      // Category filter
+      if (filters.category !== 'all' && product.category !== filters.category) {
+        return false;
+      }
+
+      // Stock status filter
+      if (filters.stockStatus !== 'all') {
+        if (filters.stockStatus === 'out_of_stock' && product.stock > 0) return false;
+        if (filters.stockStatus === 'critical' && product.stock > product.critical_limit) return false;
+        if (filters.stockStatus === 'in_stock' && product.stock <= product.critical_limit) return false;
+      }
+
+      return true;
+    });
+  };
+
   return (
-    <ProductContext.Provider value={{ products, addProduct, updateStock, checkLowStock }}>
+    <ProductContext.Provider value={{ 
+      products, 
+      addProduct, 
+      updateProduct,
+      deleteProduct,
+      updateStock, 
+      checkLowStock,
+      getFilteredProducts
+    }}>
       {children}
     </ProductContext.Provider>
   );
