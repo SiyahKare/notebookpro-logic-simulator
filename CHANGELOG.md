@@ -10,8 +10,150 @@ versiyonlama [Semantic Versioning](https://semver.org/spec/v2.0.0.html) standard
 ## [Unreleased]
 
 ### 🚀 Planlanıyor
-- Backend API bağlantısı
-- Gerçek ödeme gateway entegrasyonu
+- Gerçek ödeme gateway entegrasyonu (iyzico, PayTR)
+- E-posta/SMS bildirim sistemi
+- Mobil uygulama (React Native)
+
+---
+
+## [3.1.0] - 2024-12-05
+
+### 🔗 Frontend API Entegrasyonu
+
+#### 📡 API Client (`src/services/api.ts`)
+- **Axios instance**: Auth interceptors ile merkezi HTTP client
+- **Token Management**: Access/refresh token yönetimi (localStorage)
+- **Auto Refresh**: 401 hatalarında otomatik token yenileme
+- **Error Handling**: Global hata yakalama
+
+#### 🔐 AuthContext Güncellemesi
+- **API Login**: `POST /api/auth/login` ile JWT authentication
+- **API Register**: `POST /api/auth/register` ile kullanıcı kaydı
+- **Demo Login**: Development için `demoLogin(role)` fonksiyonu
+- **Session Management**: Token tabanlı oturum yönetimi
+
+#### 📦 ProductContext Güncellemesi
+- **API Products**: `GET /api/products` ile ürün listesi
+- **Stock Updates**: `POST /api/products/:id/stock` ile stok güncelleme
+- **CRUD Operations**: API üzerinden ürün oluşturma/güncelleme/silme
+- **Stock Movements**: API'den stok hareket geçmişi
+
+#### 📋 OrderContext Güncellemesi
+- **API Orders**: PostgreSQL'den sipariş çekme
+- **Order Creation**: `POST /api/orders` ile sipariş oluşturma
+- **Status Updates**: `PATCH /api/orders/:id/status` ile durum güncelleme
+- **Tracking**: Kargo takip bilgileri
+
+#### 🔧 RepairContext Güncellemesi
+- **API Repairs**: `GET /api/repairs` ile servis kayıtları
+- **Public Tracking**: `GET /api/repairs/track/:code` (auth gerektirmez)
+- **Status Updates**: `PATCH /api/repairs/:id/status`
+- **Technician Assignment**: API üzerinden teknisyen atama
+
+#### 🔔 NotificationContext Güncellemesi
+- **API Notifications**: `GET /api/notifications`
+- **Mark as Read**: `PATCH /api/notifications/:id/read`
+- **Demo Fallback**: Auth yoksa demo bildirimler
+
+#### 🎫 CouponContext Güncellemesi
+- **API Validation**: `POST /api/coupons/validate`
+- **Coupon List**: `GET /api/coupons` ile aktif kuponlar
+- **Gift Wrap Price**: Settings API'den hediye paketi fiyatı
+
+#### 💰 CurrencyContext Güncellemesi
+- **Settings API**: `GET /api/settings` ile sistem ayarları
+- **Exchange Rate**: `PUT /api/settings/exchange_rate_usd`
+- **Dynamic Values**: Kargo, KDV, minimum ücretsiz kargo
+
+---
+
+## [3.0.0] - 2024-12-05
+
+### 🚀 Backend API - Node.js + Express + PostgreSQL
+
+#### 🏗️ Proje Yapısı
+```
+server/
+├── prisma/
+│   ├── schema.prisma    # Database schema (11 model)
+│   ├── seed.ts          # Seed data
+│   └── migrations/      # PostgreSQL migrations
+├── src/
+│   ├── config/          # Environment & DB config
+│   ├── middlewares/     # Auth & Error handlers
+│   ├── routes/          # 8 API route dosyası
+│   └── index.ts         # Express server
+└── package.json
+```
+
+#### 🐘 PostgreSQL Database
+- **Native Enums**: UserRole, ProductCategory, OrderStatus, RepairStatus, vb.
+- **Array Support**: PostgreSQL array'leri (kupon kategorileri)
+- **Relations**: User → Orders, Repairs, Notifications, Addresses
+- **Indexes**: Performans için optimize edilmiş index'ler
+
+#### 🔐 Authentication API
+| Endpoint | Metod | Açıklama |
+|----------|-------|----------|
+| `/api/auth/register` | POST | Yeni kullanıcı kaydı |
+| `/api/auth/login` | POST | JWT ile giriş |
+| `/api/auth/refresh` | POST | Token yenileme |
+| `/api/auth/logout` | POST | Çıkış |
+| `/api/auth/me` | GET | Mevcut kullanıcı bilgisi |
+| `/api/auth/password` | PUT | Şifre değiştirme |
+
+#### 📦 Products API
+- `GET /api/products` - Filtreleme, arama, sayfalama
+- `GET /api/products/:id` - Ürün detayı
+- `POST /api/products` - Yeni ürün (Admin)
+- `PUT /api/products/:id` - Ürün güncelleme (Admin)
+- `DELETE /api/products/:id` - Ürün silme (Admin)
+- `POST /api/products/:id/stock` - Stok hareketi
+- `POST /api/products/:id/favorite` - Favorilere ekle
+- `POST /api/products/:id/review` - Yorum ekle
+
+#### 📋 Orders API
+- `GET /api/orders` - Sipariş listesi
+- `GET /api/orders/:id` - Sipariş detayı
+- `POST /api/orders` - Yeni sipariş
+- `PATCH /api/orders/:id/status` - Durum güncelleme
+- `POST /api/orders/:id/cancel` - İptal
+
+#### 🔧 Repairs API
+- `GET /api/repairs` - Servis listesi
+- `GET /api/repairs/track/:code` - Public takip (auth yok)
+- `POST /api/repairs` - Yeni servis kaydı
+- `PATCH /api/repairs/:id/status` - Durum güncelleme
+- `POST /api/repairs/:id/parts` - Parça ekleme
+
+#### 👤 Users API
+- `GET /api/users` - Kullanıcı listesi (Admin)
+- `PATCH /api/users/:id` - Kullanıcı güncelleme (Admin)
+- `GET /api/users/me/favorites` - Favoriler
+- Address CRUD endpoints
+
+#### 🎫 Coupons API
+- `POST /api/coupons/validate` - Kupon doğrulama
+- `GET /api/coupons` - Kupon listesi (Admin)
+- `POST /api/coupons` - Yeni kupon (Admin)
+
+#### ⚙️ Settings API
+- `GET /api/settings` - Tüm ayarlar
+- `GET /api/settings/:key` - Tek ayar
+- `PUT /api/settings/:key` - Ayar güncelleme
+
+#### 🗄️ Seed Data
+- 4 kullanıcı (Admin, Technician, Dealer, Customer)
+- 10 ürün (Screen, Battery, RAM, SSD, Motherboard)
+- 4 kupon kodu (HOSGELDIN10, YILBASI100, EKRAN15, VIP20)
+- 10 sistem ayarı (Kur, kargo, firma bilgileri)
+
+#### 🔧 Middleware'ler
+- **JWT Auth**: Token doğrulama ve rol kontrolü
+- **Error Handler**: Global hata yakalama
+- **Rate Limiting**: API güvenliği
+- **CORS**: Cross-origin yapılandırması
+- **Helmet**: Security headers
 
 ---
 
@@ -437,6 +579,12 @@ Bu sürüm, NotebookPro'nun tam işlevsel MVP (Minimum Viable Product) sürümü
 
 | Versiyon | Tarih | Açıklama |
 |----------|-------|----------|
+| 3.1.0 | 2024-12-05 | Frontend API entegrasyonu |
+| 3.0.0 | 2024-12-05 | Backend API (Node.js + PostgreSQL) |
+| 2.2.0 | 2024-12-05 | Frontend UX geliştirmeleri |
+| 2.1.0 | 2024-12-05 | Ürün görselleri güncellemesi |
+| 2.0.0 | 2024-12-05 | React Router & Dark Mode |
+| 1.1.0 | 2024-12-05 | Admin Panel geliştirmeleri |
 | 1.0.0 | 2024-11-27 | İlk stabil sürüm |
 | 0.1.0 | 2024-11-20 | Prototip |
 

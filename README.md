@@ -7,7 +7,9 @@
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.x-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Vite](https://img.shields.io/badge/Vite-5.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-18.x-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-5.x-2D3748?style=for-the-badge&logo=prisma&logoColor=white)](https://www.prisma.io/)
 
 <p align="center">
   <strong>B2C & B2B destekli, ERP benzeri özelliklere sahip modern e-ticaret platformu</strong>
@@ -78,73 +80,54 @@ Hem son kullanıcılar (B2C) hem de bayiler (B2B) için tasarlanmış, Türkiye 
 
 | Katman | Teknoloji |
 |--------|-----------|
-| **Frontend** | React 19 (TypeScript) |
-| **State Management** | React Context API (10 adet Context) |
+| **Frontend** | React 18 (TypeScript) |
+| **State Management** | React Context API (11 adet Context) |
 | **Styling** | Tailwind CSS |
 | **Build Tool** | Vite |
 | **Routing** | React Router v6 |
+| **HTTP Client** | Axios |
 | **Çoklu Dil** | Custom i18n (TR/EN) |
+| **Backend** | Node.js + Express |
+| **Database** | PostgreSQL 16 |
+| **ORM** | Prisma 5 |
+| **Authentication** | JWT (Access + Refresh tokens) |
 
 ---
 
 ## 🏗️ Mimari Yapı
 
 ```
-src/
-├── 📁 components/     # 16 adet UI bileşeni
-│   ├── AIAssistant.tsx       # 🤖 AI Chatbot + Arıza Teşhis Wizard
-│   ├── AIPartFinder.tsx
-│   ├── AnimatedComponents.tsx # ✨ FadeIn, SlideIn, Counter, Ripple
-│   ├── ConfirmDialog.tsx
-│   ├── CookieBanner.tsx
-│   ├── CreditCardVisual.tsx
-│   ├── Footer.tsx
-│   ├── Invoice.tsx           # 🧾 Fatura görüntüleme/yazdırma
-│   ├── LoadingSpinner.tsx
-│   ├── Navbar.tsx
-│   ├── ProductCard.tsx       # ❤️ Favori butonu eklendi
-│   ├── RepairTracker.tsx
-│   ├── SEO.tsx
-│   ├── ShippingTracker.tsx   # 🚚 Kargo takip timeline
-│   ├── Skeleton.tsx
-│   └── Toast.tsx
+📦 notebookpro-logic-simulator/
+├── 📁 src/                    # Frontend (React)
+│   ├── 📁 components/         # 16 UI bileşeni
+│   ├── 📁 context/            # 11 Context (API entegreli)
+│   ├── 📁 hooks/              # Custom React Hooks
+│   ├── 📁 pages/              # 14 sayfa
+│   ├── 📁 services/           # 🔗 API client (Axios)
+│   │   └── api.ts             # Merkezi API client
+│   ├── 📁 types/              # TypeScript definitions
+│   ├── 📁 utils/              # Helper functions
+│   └── 📁 data/               # Mock data (fallback)
 │
-├── 📁 context/        # 10 adet global state yöneticisi
-│   ├── AuthContext.tsx
-│   ├── CartContext.tsx
-│   ├── CouponContext.tsx        # 🎫 Kupon & Hediye paketi
-│   ├── CurrencyContext.tsx
-│   ├── FavoritesContext.tsx     # ❤️ Favori ürünler
-│   ├── LanguageContext.tsx      # 🌍 TR/EN çoklu dil
-│   ├── NotificationContext.tsx
-│   ├── OrderContext.tsx
-│   ├── ProductContext.tsx
-│   ├── RepairContext.tsx
-│   └── ThemeContext.tsx
-│
-├── 📁 hooks/          # 🪝 Custom React Hooks
-│   ├── useInfiniteScroll.ts  # Sonsuz kaydırma
-│   └── useFuzzySearch.ts     # Bulanık arama
-│
-├── 📁 pages/          # 10 adet sayfa
-│   ├── AdminDashboard.tsx    # 10 sekme, ~3700 satır
-│   ├── Cart.tsx
-│   ├── Checkout.tsx
-│   ├── Contact.tsx           # 📬 İletişim formu + SSS
-│   ├── DealerDashboard.tsx
-│   ├── Favorites.tsx         # ❤️ Favori ürünler
-│   ├── Home.tsx
-│   ├── NotFound.tsx
-│   ├── Orders.tsx            # 📦 Sipariş geçmişi
-│   ├── ProductDetail.tsx
-│   ├── Products.tsx
-│   ├── Profile.tsx           # 👤 Kullanıcı profili
-│   ├── Service.tsx
-│   └── TechnicianDashboard.tsx
-│
-├── 📁 types/          # TypeScript tip tanımları
-├── 📁 utils/          # Yardımcı fonksiyonlar
-└── 📁 data/           # Mock veriler (20 ürün)
+└── 📁 server/                 # Backend (Node.js)
+    ├── 📁 prisma/
+    │   ├── schema.prisma      # 11 model, enum'lar
+    │   ├── seed.ts            # Seed data
+    │   └── migrations/        # PostgreSQL migrations
+    ├── 📁 src/
+    │   ├── 📁 config/         # Environment, DB config
+    │   ├── 📁 middlewares/    # Auth, Error handling
+    │   ├── 📁 routes/         # 8 API route dosyası
+    │   │   ├── auth.routes.ts
+    │   │   ├── product.routes.ts
+    │   │   ├── order.routes.ts
+    │   │   ├── repair.routes.ts
+    │   │   ├── user.routes.ts
+    │   │   ├── notification.routes.ts
+    │   │   ├── coupon.routes.ts
+    │   │   └── setting.routes.ts
+    │   └── index.ts           # Express server
+    └── package.json
 ```
 
 ---
@@ -262,6 +245,7 @@ graph LR
 ### Gereksinimler
 
 - Node.js 18+
+- PostgreSQL 16+
 - npm veya yarn
 
 ### Adımlar
@@ -269,69 +253,110 @@ graph LR
 ```bash
 # 1. Repository'yi klonlayın
 git clone https://github.com/SiyahKare/notebookpro-logic-simulator.git
-
-# 2. Proje dizinine gidin
 cd notebookpro-logic-simulator
 
-# 3. Bağımlılıkları yükleyin
+# 2. Frontend bağımlılıklarını yükleyin
 npm install
 
-# 4. Geliştirme sunucusunu başlatın
+# 3. Backend bağımlılıklarını yükleyin
+cd server && npm install && cd ..
+
+# 4. PostgreSQL veritabanı oluşturun
+createdb notebookpro
+
+# 5. Prisma migration ve seed
+cd server
+npx prisma migrate dev --name init
+npx prisma db seed
+cd ..
+
+# 6. Backend'i başlatın (yeni terminal)
+cd server && npm run dev
+
+# 7. Frontend'i başlatın
 npm run dev
 ```
 
-Uygulama varsayılan olarak `http://localhost:5173` adresinde çalışacaktır.
+### Çalışan Servisler
+
+| Servis | URL |
+|--------|-----|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:5001 |
+| API Docs | http://localhost:5001/api |
+| Prisma Studio | `npx prisma studio` |
 
 ---
 
 ## 📖 Kullanım
 
-### Demo Hesapları
+### Demo Hesapları (PostgreSQL)
 
 | Rol | E-posta | Şifre |
 |-----|---------|-------|
-| 👑 Admin | admin@notebookpro.com | demo |
-| 🏢 Bayi | dealer@company.com | demo |
-| 👨‍🔧 Teknisyen | tech@notebookpro.com | demo |
+| 👑 Admin | admin@notebookpro.com | admin123 |
+| 👨‍🔧 Teknisyen | ahmet@notebookpro.com | tech123 |
+| 🏢 Bayi | info@egepc.com | dealer123 |
+| 👤 Müşteri | ali@gmail.com | customer123 |
 
-### Rol Değiştirme
+### Demo Modu
 
-Navbar'daki rol seçicisini kullanarak farklı kullanıcı deneyimlerini test edebilirsiniz.
+Navbar'daki simülasyon butonlarını kullanarak API olmadan demo kullanıcılarla test yapabilirsiniz.
+
+### API Test
+
+```bash
+# Health check
+curl http://localhost:5001/api/health
+
+# Login
+curl -X POST http://localhost:5001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@notebookpro.com","password":"admin123"}'
+
+# Ürünler
+curl http://localhost:5001/api/products
+```
 
 ---
 
-## 📊 Mock Veri İstatistikleri
+## 📊 Veritabanı İstatistikleri
 
 ```
-📦 5 örnek ürün
-👥 5 kullanıcı (admin, teknisyen, bayi)
-🏢 2 harici servis partneri
-🔧 3 örnek servis kaydı
-🔔 6 örnek bildirim
-🏷️ 4 örnek kampanya
-📊 Demo stok hareketleri
+🐘 PostgreSQL Database: notebookpro
+📦 10 ürün (Screen, Battery, RAM, SSD, Motherboard)
+👥 4 kullanıcı (Admin, Technician, Dealer, Customer)
+🎫 4 kupon kodu
+⚙️ 10 sistem ayarı
+📋 11 Prisma model
+🔗 8 API route dosyası
 ```
 
 ---
 
 ## 🗺️ Geliştirme Yol Haritası
 
-### ✅ Tamamlanan
+### ✅ Tamamlanan (v3.1.0)
 - [x] 📊 Admin Panel geliştirmeleri (Dashboard, Raporlar, Müşteriler, vb.)
 - [x] 🔔 In-app bildirim sistemi
 - [x] 📈 Raporlama & Analytics (Frontend)
 - [x] 📥 CSV Import/Export
 - [x] 📦 Gelişmiş stok yönetimi
 - [x] 🏷️ Promosyon/kampanya yönetimi
+- [x] 🛣️ React Router v6 entegrasyonu
+- [x] 🌙 Dark Mode & PWA desteği
+- [x] 🌍 Çoklu dil desteği (TR/EN)
+- [x] 🔌 **Backend API** (Node.js + Express + Prisma)
+- [x] 🐘 **PostgreSQL** veritabanı entegrasyonu
+- [x] 🔐 **JWT Authentication** sistemi
+- [x] 🔗 **Frontend API entegrasyonu** (Axios)
 
 ### 📝 Planlanıyor
-- [ ] 🛣️ React Router entegrasyonu
-- [ ] 🔌 Backend API entegrasyonu
-- [ ] 🔐 JWT/OAuth authentication
-- [ ] 🗄️ Database entegrasyonu
 - [ ] 💰 Ödeme gateway entegrasyonu (iyzico, PayTR)
-- [ ] 📧 SMS/Email bildirim sistemi (backend)
-- [ ] 🌍 Çoklu dil desteği (i18n)
+- [ ] 📧 E-posta bildirim sistemi (SendGrid)
+- [ ] 📱 SMS bildirim sistemi (Netgsm)
+- [ ] 🔒 OAuth2 (Google, Apple)
+- [ ] 📱 Mobil uygulama (React Native)
 
 ---
 
