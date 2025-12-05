@@ -15,6 +15,101 @@ versiyonlama [Semantic Versioning](https://semver.org/spec/v2.0.0.html) standard
 
 ---
 
+## [2.2.0] - 2024-12-05
+
+### 🚀 Büyük Frontend Geliştirme Güncellemesi
+
+#### 1️⃣ UX İyileştirmeleri
+- **AnimatedComponents.tsx**: FadeIn, SlideIn, StaggerChildren, AnimatedCounter, Typewriter, RippleButton
+- **useInfiniteScroll Hook**: Otomatik yükleme, Pull-to-refresh desteği
+- **useFuzzySearch Hook**: Bulanık arama algoritması, autocomplete önerileri
+- **CSS Animasyonları**: shimmer, ripple, bounce-in, slide-up, fade-in, float
+- **Custom Scrollbar**: Dark/light mode uyumlu scrollbar stili
+
+#### 2️⃣ Yeni Sayfalar
+- **Profile.tsx** (`/profile`): Kullanıcı profil yönetimi, ayarlar, güvenlik
+- **Orders.tsx** (`/orders`): Sipariş geçmişi, filtreleme, detay görüntüleme
+- **Favorites.tsx** (`/favorites`): Favori ürünler listesi, toplu sepete ekleme
+- **Contact.tsx** (`/contact`): İletişim formu, harita, SSS bölümü
+
+#### 3️⃣ FavoritesContext
+- LocalStorage kalıcılığı
+- Toggle favorite, clear all
+- ProductCard'a kalp butonu entegrasyonu
+
+#### 4️⃣ Ürün Kataloğu Genişletmesi
+- **15 yeni ürün eklendi** (toplam 20 ürün)
+- RAM: Samsung 8GB, Kingston 16GB DDR4
+- Motherboard: HP EliteBook, Dell Latitude anakartları
+- Ekran: 14" 120Hz IPS, 17.3" FHD TN
+- Batarya: HP CI03XL, Lenovo ThinkPad
+- Klavye: Dell, Lenovo TR backlit
+- SSD: WD 256GB, Samsung 1TB Gen4
+- Chipset: AMD Ryzen 5, Intel i5-8250U, NVIDIA MX150
+
+#### 5️⃣ AI Asistan Geliştirmeleri
+- **Tab sistemi**: Sohbet, Teşhis, Öneri sekmeleri
+- **Arıza Teşhis Wizard'ı**: 5 ana kategori, 20+ teşhis sonucu
+- **Ürün Öneri Sistemi**: Kategoriye göre otomatik öneri
+- **Quick Actions**: Sipariş sorgula, servis takibi, parça bul, SSS
+- **Dark mode desteği**
+
+#### 6️⃣ Çoklu Dil Desteği
+- **LanguageContext**: TR/EN dil desteği
+- **100+ çeviri anahtarı**: Tüm UI metinleri
+- **LanguageSelector bileşeni**: Bayraklı dil seçici
+- **Otomatik tarayıcı dili algılama**
+- **LocalStorage kalıcılığı**
+
+#### 7️⃣ E-ticaret Özellikleri
+- **CouponContext**: Kupon kodu sistemi
+  - 5 örnek kupon (HOSGELDIN10, YILBASI100, vb.)
+  - Yüzde ve sabit indirim tipleri
+  - Minimum tutar, maksimum indirim limitleri
+- **Hediye Paketi**: Opsiyonel hediye paketleme (25₺)
+- **ShippingTracker bileşeni**: Kargo takip timeline'ı
+- **Invoice bileşeni**: Fatura görüntüleme, yazdırma, PDF
+
+#### 📦 Yeni Context'ler
+- `FavoritesContext` - Favori ürünler yönetimi
+- `LanguageContext` - Çoklu dil desteği
+- `CouponContext` - Kupon ve hediye paketi
+
+#### 📦 Yeni Hook'lar
+- `useInfiniteScroll` - Sonsuz kaydırma
+- `usePullToRefresh` - Çekip yenileme
+- `useFuzzySearch` - Bulanık arama
+- `useDebounce` / `useThrottle` - Performans
+
+#### 📦 Yeni Bileşenler
+- `AnimatedComponents` - Animasyonlu bileşenler
+- `ShippingTracker` - Kargo takip
+- `Invoice` - Fatura görüntüleyici
+
+---
+
+## [2.1.0] - 2024-12-05
+
+### 🖼️ Ürün Görselleri Güncellemesi
+
+#### 📸 Gerçek Ürün Fotoğrafları
+- **Pexels Entegrasyonu**: Ücretsiz ve ticari kullanıma açık yüksek kaliteli görseller
+- **Kategori Bazlı Görseller**:
+  - 📺 **LCD Screen**: Profesyonel laptop ekranı görseli
+  - 🔋 **Battery**: Elektronik devre görseli  
+  - ⌨️ **Keyboard**: Beyaz backlit klavye görseli
+  - 💾 **Chipset**: CPU/işlemci görseli
+  - 💿 **SSD/Storage**: Anakart/devre kartı görseli
+- **Optimize Edilmiş URL'ler**: 400x400px, sıkıştırılmış kalite
+- **CDN Desteği**: Pexels CDN üzerinden hızlı yükleme
+
+#### 📝 Ürün Açıklamaları
+- Tüm ürünlere detaylı Türkçe açıklamalar eklendi
+- Teknik özellikler ve uyumluluk bilgileri
+- Garanti ve kalite bilgileri
+
+---
+
 ## [2.0.0] - 2024-12-05
 
 ### 🚀 Büyük Güncelleme - React Router & Dark Mode

@@ -10,6 +10,9 @@ import { ProductProvider } from './context/ProductContext';
 import { OrderProvider } from './context/OrderContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { FavoritesProvider } from './context/FavoritesContext';
+import { LanguageProvider } from './context/LanguageContext';
+import { CouponProvider } from './context/CouponContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -21,14 +24,19 @@ root.render(
   <React.StrictMode>
     <BrowserRouter>
       <ThemeProvider>
-        <CurrencyProvider>
+        <LanguageProvider>
+          <CurrencyProvider>
           <AuthProvider>
             <NotificationProvider>
               <ProductProvider>
                 <RepairProvider>
                   <CartProvider>
                     <OrderProvider>
-                      <App />
+                      <FavoritesProvider>
+                        <CouponProvider>
+                          <App />
+                        </CouponProvider>
+                      </FavoritesProvider>
                     </OrderProvider>
                   </CartProvider>
                 </RepairProvider>
@@ -36,6 +44,7 @@ root.render(
             </NotificationProvider>
           </AuthProvider>
         </CurrencyProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>

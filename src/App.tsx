@@ -19,6 +19,10 @@ const DealerDashboard = lazy(() => import('./pages/DealerDashboard'));
 const TechnicianDashboard = lazy(() => import('./pages/TechnicianDashboard'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const Products = lazy(() => import('./pages/Products'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Orders = lazy(() => import('./pages/Orders'));
+const Favorites = lazy(() => import('./pages/Favorites'));
+const Contact = lazy(() => import('./pages/Contact'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Protected Route Component
@@ -62,6 +66,10 @@ const App: React.FC = () => {
             <Route path="/service/:trackingCode" element={<Service />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/favorites" element={<Favorites />} />
+            <Route path="/contact" element={<Contact />} />
 
             {/* Admin Routes */}
             <Route 

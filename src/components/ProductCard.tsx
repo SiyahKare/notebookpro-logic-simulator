@@ -1,10 +1,12 @@
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Product } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { calculateProductPrice, formatCurrency } from '../utils/pricing';
 import { useCart } from '../context/CartContext';
+import { useFavorites } from '../context/FavoritesContext';
 
 interface ProductCardProps {
   product: Product;
@@ -15,10 +17,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, matchedModel }) => {
   const { user, checkDealerAccess } = useAuth();
   const { exchangeRate } = useCurrency();
   const { addToCart } = useCart();
+  const { isFavorite, toggleFavorite } = useFavorites();
   
   const pricing = calculateProductPrice(product, user, exchangeRate);
   const isDealer = checkDealerAccess();
   const isOutOfStock = product.stock === 0;
+  const productIsFavorite = isFavorite(product.id);
 
   const handleAddToCart = () => {
     if (isOutOfStock) {
@@ -39,11 +43,28 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, matchedModel }) => {
     <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-2xl hover:shadow-slate-200 transition duration-300 flex flex-col h-full group">
       {/* Image Area */}
       <div className="relative h-48 bg-slate-50 overflow-hidden p-4 flex items-center justify-center">
-        <img 
-          src={product.image_url} 
-          alt={product.name} 
-          className={`object-contain max-h-full transition duration-500 ${isOutOfStock ? 'grayscale opacity-60' : 'group-hover:scale-105'}`}
-        />
+        <Link to={`/product/${product.id}`}>
+          <img 
+            src={product.image_url} 
+            alt={product.name} 
+            className={`object-contain max-h-full transition duration-500 ${isOutOfStock ? 'grayscale opacity-60' : 'group-hover:scale-105'}`}
+          />
+        </Link>
+        
+        {/* Favorite Button */}
+        <button
+          onClick={() => toggleFavorite(product)}
+          className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+            productIsFavorite 
+              ? 'bg-red-500 text-white shadow-lg shadow-red-200' 
+              : 'bg-white/90 text-slate-400 hover:text-red-500 hover:bg-white'
+          }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+          </svg>
+        </button>
+        
         {/* Dealer Tag */}
         {isDealer && (
           <div className="absolute top-3 left-3 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md">

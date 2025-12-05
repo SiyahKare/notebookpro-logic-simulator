@@ -78,11 +78,12 @@ Hem son kullanıcılar (B2C) hem de bayiler (B2B) için tasarlanmış, Türkiye 
 
 | Katman | Teknoloji |
 |--------|-----------|
-| **Frontend** | React 18 (TypeScript) |
-| **State Management** | React Context API (7 adet Context) |
+| **Frontend** | React 19 (TypeScript) |
+| **State Management** | React Context API (10 adet Context) |
 | **Styling** | Tailwind CSS |
 | **Build Tool** | Vite |
-| **Routing** | View-based Router (useState) |
+| **Routing** | React Router v6 |
+| **Çoklu Dil** | Custom i18n (TR/EN) |
 
 ---
 
@@ -90,38 +91,60 @@ Hem son kullanıcılar (B2C) hem de bayiler (B2B) için tasarlanmış, Türkiye 
 
 ```
 src/
-├── 📁 components/     # 12 adet UI bileşeni
-│   ├── AIAssistant.tsx
+├── 📁 components/     # 16 adet UI bileşeni
+│   ├── AIAssistant.tsx       # 🤖 AI Chatbot + Arıza Teşhis Wizard
 │   ├── AIPartFinder.tsx
-│   ├── ConfirmDialog.tsx     # Onay dialogları
+│   ├── AnimatedComponents.tsx # ✨ FadeIn, SlideIn, Counter, Ripple
+│   ├── ConfirmDialog.tsx
 │   ├── CookieBanner.tsx
 │   ├── CreditCardVisual.tsx
 │   ├── Footer.tsx
-│   ├── Navbar.tsx            # Bildirim ikonu eklendi
-│   ├── ProductCard.tsx
+│   ├── Invoice.tsx           # 🧾 Fatura görüntüleme/yazdırma
+│   ├── LoadingSpinner.tsx
+│   ├── Navbar.tsx
+│   ├── ProductCard.tsx       # ❤️ Favori butonu eklendi
 │   ├── RepairTracker.tsx
 │   ├── SEO.tsx
-│   └── Toast.tsx             # Toast bildirimleri
+│   ├── ShippingTracker.tsx   # 🚚 Kargo takip timeline
+│   ├── Skeleton.tsx
+│   └── Toast.tsx
 │
-├── 📁 context/        # 7 adet global state yöneticisi
+├── 📁 context/        # 10 adet global state yöneticisi
 │   ├── AuthContext.tsx
 │   ├── CartContext.tsx
+│   ├── CouponContext.tsx        # 🎫 Kupon & Hediye paketi
 │   ├── CurrencyContext.tsx
-│   ├── NotificationContext.tsx  # YENİ - Bildirim sistemi
+│   ├── FavoritesContext.tsx     # ❤️ Favori ürünler
+│   ├── LanguageContext.tsx      # 🌍 TR/EN çoklu dil
+│   ├── NotificationContext.tsx
 │   ├── OrderContext.tsx
-│   ├── ProductContext.tsx       # Stok hareketleri eklendi
-│   └── RepairContext.tsx
+│   ├── ProductContext.tsx
+│   ├── RepairContext.tsx
+│   └── ThemeContext.tsx
 │
-├── 📁 pages/          # 5 adet sayfa
+├── 📁 hooks/          # 🪝 Custom React Hooks
+│   ├── useInfiniteScroll.ts  # Sonsuz kaydırma
+│   └── useFuzzySearch.ts     # Bulanık arama
+│
+├── 📁 pages/          # 10 adet sayfa
 │   ├── AdminDashboard.tsx    # 10 sekme, ~3700 satır
 │   ├── Cart.tsx
 │   ├── Checkout.tsx
+│   ├── Contact.tsx           # 📬 İletişim formu + SSS
+│   ├── DealerDashboard.tsx
+│   ├── Favorites.tsx         # ❤️ Favori ürünler
 │   ├── Home.tsx
-│   └── Service.tsx
+│   ├── NotFound.tsx
+│   ├── Orders.tsx            # 📦 Sipariş geçmişi
+│   ├── ProductDetail.tsx
+│   ├── Products.tsx
+│   ├── Profile.tsx           # 👤 Kullanıcı profili
+│   ├── Service.tsx
+│   └── TechnicianDashboard.tsx
 │
 ├── 📁 types/          # TypeScript tip tanımları
 ├── 📁 utils/          # Yardımcı fonksiyonlar
-└── 📁 data/           # Mock veriler
+└── 📁 data/           # Mock veriler (20 ürün)
 ```
 
 ---
