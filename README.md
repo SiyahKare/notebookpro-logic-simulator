@@ -79,7 +79,7 @@ Hem son kullanıcılar (B2C) hem de bayiler (B2B) için tasarlanmış, Türkiye 
 | Katman | Teknoloji |
 |--------|-----------|
 | **Frontend** | React 18 (TypeScript) |
-| **State Management** | React Context API (6 adet Context) |
+| **State Management** | React Context API (7 adet Context) |
 | **Styling** | Tailwind CSS |
 | **Build Tool** | Vite |
 | **Routing** | View-based Router (useState) |
@@ -90,27 +90,30 @@ Hem son kullanıcılar (B2C) hem de bayiler (B2B) için tasarlanmış, Türkiye 
 
 ```
 src/
-├── 📁 components/     # 10 adet UI bileşeni
+├── 📁 components/     # 12 adet UI bileşeni
 │   ├── AIAssistant.tsx
 │   ├── AIPartFinder.tsx
+│   ├── ConfirmDialog.tsx     # Onay dialogları
 │   ├── CookieBanner.tsx
 │   ├── CreditCardVisual.tsx
 │   ├── Footer.tsx
-│   ├── Navbar.tsx
+│   ├── Navbar.tsx            # Bildirim ikonu eklendi
 │   ├── ProductCard.tsx
 │   ├── RepairTracker.tsx
-│   └── SEO.tsx
+│   ├── SEO.tsx
+│   └── Toast.tsx             # Toast bildirimleri
 │
-├── 📁 context/        # 6 adet global state yöneticisi
+├── 📁 context/        # 7 adet global state yöneticisi
 │   ├── AuthContext.tsx
 │   ├── CartContext.tsx
 │   ├── CurrencyContext.tsx
+│   ├── NotificationContext.tsx  # YENİ - Bildirim sistemi
 │   ├── OrderContext.tsx
-│   ├── ProductContext.tsx
+│   ├── ProductContext.tsx       # Stok hareketleri eklendi
 │   └── RepairContext.tsx
 │
 ├── 📁 pages/          # 5 adet sayfa
-│   ├── AdminDashboard.tsx
+│   ├── AdminDashboard.tsx    # 10 sekme, ~3700 satır
 │   ├── Cart.tsx
 │   ├── Checkout.tsx
 │   ├── Home.tsx
@@ -198,7 +201,22 @@ graph LR
 | 🔧 **Service** | `/service` | Servis talebi, canlı takip |
 | 🛒 **Cart** | `/cart` | Sepet yönetimi, B2B teklif |
 | 💳 **Checkout** | `/checkout` | Güvenli ödeme |
-| ⚙️ **Admin** | `/admin` | Yönetim paneli |
+| ⚙️ **Admin** | `/admin` | Yönetim paneli (10 sekme) |
+
+### ⚙️ Admin Dashboard Sekmeleri
+
+| Sekme | İkon | Özellikler |
+|-------|------|------------|
+| **Dashboard** | 📊 | Bugünün özeti, hızlı işlemler, son siparişler/servisler, mini satış grafiği |
+| **Ürünler** | 📦 | CRUD, filtreleme, sayfalama, CSV import/export |
+| **Bayiler** | 🏢 | Bayi onay sistemi |
+| **Servis** | 🔧 | Servis takip, teknisyen atama, RMA/garanti |
+| **Siparişler** | 🛒 | Sipariş yönetimi, kargo takip, fatura |
+| **Bildirimler** | 🔔 | In-app bildirimler, okundu işaretleme |
+| **Raporlar** | 📈 | Satış grafikleri, en çok satanlar, stok/servis raporları |
+| **Müşteriler** | 👥 | Müşteri listesi, segmentasyon (VIP/Düzenli/Yeni) |
+| **Kampanyalar** | 🏷️ | İndirim kodları, kampanya yönetimi |
+| **Ayarlar** | ⚙️ | Döviz, bildirim, firma, sistem ayarları |
 
 ---
 
@@ -266,19 +284,30 @@ Navbar'daki rol seçicisini kullanarak farklı kullanıcı deneyimlerini test ed
 👥 5 kullanıcı (admin, teknisyen, bayi)
 🏢 2 harici servis partneri
 🔧 3 örnek servis kaydı
+🔔 6 örnek bildirim
+🏷️ 4 örnek kampanya
+📊 Demo stok hareketleri
 ```
 
 ---
 
 ## 🗺️ Geliştirme Yol Haritası
 
+### ✅ Tamamlanan
+- [x] 📊 Admin Panel geliştirmeleri (Dashboard, Raporlar, Müşteriler, vb.)
+- [x] 🔔 In-app bildirim sistemi
+- [x] 📈 Raporlama & Analytics (Frontend)
+- [x] 📥 CSV Import/Export
+- [x] 📦 Gelişmiş stok yönetimi
+- [x] 🏷️ Promosyon/kampanya yönetimi
+
+### 📝 Planlanıyor
 - [ ] 🛣️ React Router entegrasyonu
 - [ ] 🔌 Backend API entegrasyonu
 - [ ] 🔐 JWT/OAuth authentication
 - [ ] 🗄️ Database entegrasyonu
 - [ ] 💰 Ödeme gateway entegrasyonu (iyzico, PayTR)
-- [ ] 📧 SMS/Email bildirim sistemi
-- [ ] 📈 Finansal raporlama modülü
+- [ ] 📧 SMS/Email bildirim sistemi (backend)
 - [ ] 🌍 Çoklu dil desteği (i18n)
 
 ---

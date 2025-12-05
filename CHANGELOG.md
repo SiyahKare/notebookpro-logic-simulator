@@ -16,6 +16,150 @@ versiyonlama [Semantic Versioning](https://semver.org/spec/v2.0.0.html) standard
 
 ---
 
+## [1.1.0] - 2024-12-05
+
+### ✨ Admin Panel Geliştirmeleri - Faz 1
+
+#### Dashboard Yenilikleri
+- **Bugünün Özeti Kartı**: Günlük sipariş, servis, bekleyen ve kritik stok sayıları gradient tasarımlı hero kartta
+- **Hızlı İşlemler**: 4 adet hızlı erişim butonu (Yeni Ürün, Yeni Servis, Siparişler, Bayi Onay)
+- **Son Siparişler Widget'ı**: Son 5 siparişi gösteren kompakt liste
+- **Son Servis Kayıtları Widget'ı**: Son 5 servis kaydını gösteren kompakt liste
+- **Mini Satış Grafiği**: Son 7 günün satış performansını gösteren interaktif bar chart
+- **Bekleyen Bayiler Uyarısı**: Onay bekleyen bayileri gösteren alert kartı
+- **Geliştirilmiş Kritik Stok Uyarıları**: "Tümünü gör" linki ile filtreye yönlendirme
+
+#### Teknik İyileştirmeler
+- `MiniSalesChart` komponenti eklendi
+- Dashboard'da gerçek zamanlı tarih gösterimi
+- Hover efektleri ve tooltip'ler ile UX iyileştirmesi
+- Responsive grid layout optimizasyonu
+
+### 🔔 Bildirim Merkezi (Faz 2)
+
+#### Yeni Özellikler
+- **NotificationContext**: Merkezi bildirim yönetimi sistemi
+- **Bildirim Tipleri**: Sipariş, Servis, Stok, Bayi, Sistem kategorileri
+- **Öncelik Seviyeleri**: Düşük, Orta, Yüksek, Acil öncelik sistemi
+- **Navbar Bildirim İkonu**: Okunmamış bildirimleri gösteren animasyonlu zil ikonu
+- **Dropdown Bildirim Paneli**: Son 10 bildirimi gösteren kapsamlı dropdown
+- **Okundu İşaretleme**: Tek tek veya toplu okundu işaretleme
+- **Zaman Gösterimi**: "5 dk önce", "2 saat önce" formatında relative time
+- **Demo Bildirimleri**: Otomatik örnek bildirimler (her 30 saniyede %10 olasılık)
+- **Mobil Uyumluluk**: Mobil menüde bildirim sayacı
+
+#### Teknik
+- `NotificationContext.tsx` oluşturuldu
+- `NotificationProvider` App wrapper'a eklendi
+- Navbar'a bildirim dropdown'u entegre edildi
+- Öncelik bazlı renk kodlaması sistemi
+
+### 📈 Raporlama & Analytics (Faz 3)
+
+#### Yeni Özellikler
+- **Reports Tab**: Kapsamlı raporlama sekmesi
+- **Dönem Seçici**: Son 7 gün, 30 gün, 90 gün ve tüm zamanlar filtreleme
+- **Satış Grafiği**: Günlük satış performansını gösteren interaktif bar chart
+- **Özet Kartları**: Toplam ciro, ortalama sepet, servis sayısı, stok değeri
+- **En Çok Satan Ürünler**: Top 10 ürün listesi (adet ve ciro bazlı)
+- **Kategori Dağılımı**: Kategori bazlı satış dağılımı progress bar'ları
+- **Servis Durumu Dağılımı**: RepairStatus bazlı istatistikler
+- **En Çok Servis Edilen Markalar**: Marka bazlı servis sayıları
+- **Stok Sağlığı**: Toplam ürün, stok, kritik seviye ve tükenen ürünler
+- **Sipariş Durumu Özeti**: OrderStatus bazlı sipariş ve ciro dağılımı
+
+#### Teknik
+- `ReportsTab` komponenti eklendi
+- `useMemo` ile performans optimizasyonları
+- Responsive grid layout'lar
+- Gradient kartlar ile görsel zenginlik
+
+### 👥 Müşteri Yönetimi (Faz 4)
+
+#### Yeni Özellikler
+- **Customers Tab**: Tüm müşterilerin merkezi yönetimi
+- **Otomatik Müşteri Birleştirme**: Sipariş ve servislerden müşteri listesi oluşturma
+- **Müşteri Arama**: İsim, telefon, e-posta ile filtreleme
+- **Müşteri Segmentasyonu**: VIP, Düzenli, Yeni müşteri etiketleri
+- **Müşteri Detay Modalı**: Tüm sipariş ve servis geçmişi görüntüleme
+- **İstatistik Kartları**: Toplam müşteri, ciro, ortalama harcama, tekrar eden müşteriler
+- **Hızlı Eylemler**: WhatsApp ile iletişim, bilgileri kopyalama
+
+#### Teknik
+- `CustomersTab` komponenti eklendi
+- Sipariş ve servis verilerinden müşteri profili çıkarımı
+- Müşteri bazlı toplam harcama hesaplama
+- Son aktivite tarihine göre sıralama
+
+### ⚙️ Ayarlar Sekmesi (Faz 5)
+
+#### Yeni Özellikler
+- **Settings Tab**: Kapsamlı sistem ayarları sayfası
+- **Döviz Ayarları**: Manuel kur girişi, otomatik güncelleme toggle
+- **Bildirim Ayarları**: Sipariş, stok, servis, bayi bildirimleri için toggle'lar
+- **Firma Bilgileri**: Şirket adı, adres, telefon, vergi bilgileri
+- **Sistem Ayarları**: Bakım modu, debug modu, varsayılan kritik stok limiti
+- **Tehlikeli Bölge**: Önbellek temizleme, veri sıfırlama, export butonları
+- **Sistem Bilgileri**: Versiyon, ortam, güncelleme tarihi gösterimi
+
+#### Teknik
+- `SettingsTab` komponenti eklendi
+- `useCurrency` hook entegrasyonu ile dinamik kur değişikliği
+- Toggle switch'ler için özel Tailwind styling
+- Responsive 2-kolon grid layout
+
+### 📥 Excel Import/Export (Faz 6)
+
+#### Yeni Özellikler
+- **ImportExportBar**: Ürünler sekmesine eklenen import/export araç çubuğu
+- **CSV Export**: Ürünler, siparişler ve servis kayıtlarını CSV olarak dışa aktarma
+- **CSV Import**: Ürün verilerini CSV'den toplu içe aktarma
+- **Şablon İndirme**: Doğru formatla doldurulacak örnek şablon
+- **Dropdown Export Seçici**: Tek tıkla farklı veri tiplerini export etme
+
+#### Teknik
+- `ImportExportBar` komponenti eklendi
+- FileReader API ile CSV parsing
+- BOM karakteri ile UTF-8 encoding desteği
+- Noktalı virgül (;) ayraçlı Türkçe uyumlu format
+
+### 📊 Gelişmiş Stok Yönetimi (Faz 7)
+
+#### Yeni Özellikler
+- **Stok Hareket Takibi**: Giriş, çıkış, satış, iade, düzeltme hareketleri
+- **Stok Geçmişi Modalı**: Her ürün için tüm stok hareketlerini görüntüleme
+- **Tıklanabilir Stok Gösterimi**: Ürün tablosunda stok sayısına tıklayarak modal açma
+- **Hareket Ekleme Formu**: Modal içinden yeni stok hareketi oluşturma
+- **Hareket Referansları**: Sipariş/servis numarası ile hareket ilişkilendirme
+- **Otomatik Hareket Kaydı**: Stok güncellemelerinde otomatik hareket oluşturma
+- **Demo Veri**: Mock stok hareketleri ile örnek veri
+
+#### Teknik
+- `StockMovement` ve `StockMovementType` type'ları eklendi
+- ProductContext'e `addStockMovement`, `getProductStockHistory`, `bulkUpdateStock` fonksiyonları eklendi
+- `stockMovements` state'i ve demo data generator
+- Modal içi real-time stok güncelleme
+
+### 🏷️ Promosyon/Kampanya Yönetimi (Faz 8)
+
+#### Yeni Özellikler
+- **Promotions Tab**: Kampanya ve indirim kodu yönetim sekmesi
+- **Kampanya Tipleri**: Yüzdelik indirim, sabit indirim, ücretsiz kargo
+- **Kampanya Oluşturma Formu**: Kod, ad, tip, değer, limitler, tarihler
+- **Kullanım Takibi**: Her kampanyanın kullanım sayısı ve limiti
+- **Geçerlilik Kontrolü**: Tarih ve kullanım limiti kontrolü
+- **Durum Yönetimi**: Aktif/Pasif toggle, silme işlemleri
+- **Kod Kopyalama**: Tek tıkla kampanya kodunu kopyalama
+- **İstatistik Kartları**: Toplam, aktif, kullanım, süresi dolan kampanyalar
+
+#### Teknik
+- `PromotionsTab` komponenti eklendi
+- `Promotion` interface tanımı
+- Demo kampanya verileri
+- Responsive tablo ve modal tasarım
+
+---
+
 ## [1.0.0] - 2024-11-27
 
 ### 🎉 İlk Sürüm

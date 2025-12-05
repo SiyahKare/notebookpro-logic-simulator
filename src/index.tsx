@@ -7,6 +7,7 @@ import { CartProvider } from './context/CartContext';
 import { RepairProvider } from './context/RepairContext';
 import { ProductProvider } from './context/ProductContext';
 import { OrderProvider } from './context/OrderContext';
+import { NotificationProvider } from './context/NotificationContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -18,15 +19,17 @@ root.render(
   <React.StrictMode>
     <CurrencyProvider>
       <AuthProvider>
-        <ProductProvider>
-          <RepairProvider>
-            <CartProvider>
-              <OrderProvider>
-                <App />
-              </OrderProvider>
-            </CartProvider>
-          </RepairProvider>
-        </ProductProvider>
+        <NotificationProvider>
+          <ProductProvider>
+            <RepairProvider>
+              <CartProvider>
+                <OrderProvider>
+                  <App />
+                </OrderProvider>
+              </CartProvider>
+            </RepairProvider>
+          </ProductProvider>
+        </NotificationProvider>
       </AuthProvider>
     </CurrencyProvider>
   </React.StrictMode>
