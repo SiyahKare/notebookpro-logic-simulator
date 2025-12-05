@@ -16,7 +16,7 @@ versiyonlama [Semantic Versioning](https://semver.org/spec/v2.0.0.html) standard
 
 ---
 
-## [3.1.0] - 2024-12-05
+## [3.1.0] - 2025-12-05
 
 ### 🔗 Frontend API Entegrasyonu
 
@@ -67,7 +67,7 @@ versiyonlama [Semantic Versioning](https://semver.org/spec/v2.0.0.html) standard
 
 ---
 
-## [3.0.0] - 2024-12-05
+## [3.0.0] - 2025-12-05
 
 ### 🚀 Backend API - Node.js + Express + PostgreSQL
 
@@ -157,7 +157,7 @@ server/
 
 ---
 
-## [2.2.0] - 2024-12-05
+## [2.2.0] - 2025-12-05
 
 ### 🚀 Büyük Frontend Geliştirme Güncellemesi
 
@@ -230,7 +230,7 @@ server/
 
 ---
 
-## [2.1.0] - 2024-12-05
+## [2.1.0] - 2025-12-05
 
 ### 🖼️ Ürün Görselleri Güncellemesi
 
@@ -252,7 +252,7 @@ server/
 
 ---
 
-## [2.0.0] - 2024-12-05
+## [2.0.0] - 2025-12-05
 
 ### 🚀 Büyük Güncelleme - React Router & Dark Mode
 
@@ -326,7 +326,7 @@ server/
 
 ---
 
-## [1.1.0] - 2024-12-05
+## [1.1.0] - 2025-12-05
 
 ### ✨ Admin Panel Geliştirmeleri - Faz 1
 
@@ -579,12 +579,12 @@ Bu sürüm, NotebookPro'nun tam işlevsel MVP (Minimum Viable Product) sürümü
 
 | Versiyon | Tarih | Açıklama |
 |----------|-------|----------|
-| 3.1.0 | 2024-12-05 | Frontend API entegrasyonu |
-| 3.0.0 | 2024-12-05 | Backend API (Node.js + PostgreSQL) |
-| 2.2.0 | 2024-12-05 | Frontend UX geliştirmeleri |
-| 2.1.0 | 2024-12-05 | Ürün görselleri güncellemesi |
-| 2.0.0 | 2024-12-05 | React Router & Dark Mode |
-| 1.1.0 | 2024-12-05 | Admin Panel geliştirmeleri |
+| 3.1.0 | 2025-12-05 | Frontend API entegrasyonu |
+| 3.0.0 | 2025-12-05 | Backend API (Node.js + PostgreSQL) |
+| 2.2.0 | 2025-12-05 | Frontend UX geliştirmeleri |
+| 2.1.0 | 2025-12-05 | Ürün görselleri güncellemesi |
+| 2.0.0 | 2025-12-05 | React Router & Dark Mode |
+| 1.1.0 | 2025-12-05 | Admin Panel geliştirmeleri |
 | 1.0.0 | 2024-11-27 | İlk stabil sürüm |
 | 0.1.0 | 2024-11-20 | Prototip |
 

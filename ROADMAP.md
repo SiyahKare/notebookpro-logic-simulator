@@ -16,7 +16,7 @@ Bu döküman, NotebookPro projesinin planlanan geliştirme aşamalarını ve hed
 
 ## 🏁 Faz 1: Temel Altyapı (Tamamlandı ✅)
 
-> **Süre:** 2024 Q4  
+> **Süre:** 2025 Q1  
 > **Durum:** ✅ Tamamlandı
 
 ### Hedefler
@@ -44,7 +44,7 @@ Bu döküman, NotebookPro projesinin planlanan geliştirme aşamalarını ve hed
 
 ## ✅ Faz 1.5: Admin Panel Geliştirmeleri (Tamamlandı ✅)
 
-> **Süre:** 2024 Q4 (Aralık)  
+> **Süre:** 2025 Q1 (Aralık)  
 > **Durum:** ✅ Tamamlandı
 
 ### Hedefler
@@ -87,7 +87,7 @@ Bu döküman, NotebookPro projesinin planlanan geliştirme aşamalarını ve hed
 
 ## ✅ Faz 2: Routing & Navigation (Tamamlandı ✅)
 
-> **Süre:** 2024 Q4 (Aralık)  
+> **Süre:** 2025 Q1 (Aralık)  
 > **Durum:** ✅ Tamamlandı
 
 ### Hedefler
@@ -102,7 +102,7 @@ Bu döküman, NotebookPro projesinin planlanan geliştirme aşamalarını ve hed
 
 ## ✅ Faz 2.5: Kapsamlı Frontend Geliştirmeleri (Tamamlandı ✅)
 
-> **Süre:** 2024 Q4 (Aralık)  
+> **Süre:** 2025 Q1 (Aralık)  
 > **Durum:** ✅ Tamamlandı
 
 ### Hedefler
@@ -176,7 +176,7 @@ const routes = [
 
 ## ✅ Faz 3: Backend Entegrasyonu (Tamamlandı ✅)
 
-> **Süre:** 2024 Q4 (Aralık)  
+> **Süre:** 2025 Q1 (Aralık)  
 > **Durum:** ✅ Tamamlandı
 
 ### Hedefler
@@ -241,7 +241,7 @@ Users, Notifications, Coupons, Settings ✅
 
 ## ✅ Faz 4: Authentication & Security (Tamamlandı ✅)
 
-> **Süre:** 2024 Q4 (Aralık)  
+> **Süre:** 2025 Q1 (Aralık)  
 > **Durum:** ✅ Tamamlandı
 
 ### Hedefler
@@ -317,8 +317,8 @@ sequenceDiagram
 - [ ] E-posta bildirimleri (SendGrid/Mailgun)
 - [ ] SMS bildirimleri (Netgsm/İleti Merkezi)
 - [ ] Push notifications (FCM)
-- [x] In-app bildirimler ✅ **(Tamamlandı - Aralık 2024)**
-- [x] AI Asistan bildirimleri ✅ **(Tamamlandı - Aralık 2024)**
+- [x] In-app bildirimler ✅ **(Tamamlandı - Aralık 2025)**
+- [x] AI Asistan bildirimleri ✅ **(Tamamlandı - Aralık 2025)**
 - [ ] WhatsApp Business API
 
 ### Bildirim Tetikleyicileri
@@ -341,11 +341,11 @@ sequenceDiagram
 
 ### Hedefler
 
-- [x] Satış raporları (günlük/haftalık/aylık) ✅ **(Frontend - Aralık 2024)**
-- [x] Stok raporları ✅ **(Frontend - Aralık 2024)**
-- [x] Servis performans metrikleri ✅ **(Frontend - Aralık 2024)**
+- [x] Satış raporları (günlük/haftalık/aylık) ✅ **(Frontend - Aralık 2025)**
+- [x] Stok raporları ✅ **(Frontend - Aralık 2025)**
+- [x] Servis performans metrikleri ✅ **(Frontend - Aralık 2025)**
 - [ ] Bayi performans dashboard'u
-- [x] Finansal özet raporları ✅ **(Frontend - Aralık 2024)**
+- [x] Finansal özet raporları ✅ **(Frontend - Aralık 2025)**
 - [ ] Google Analytics 4 entegrasyonu
 - [ ] Custom event tracking
 
@@ -415,11 +415,11 @@ locales/
 
 ### Hedefler
 
-- [x] AI destekli parça önerisi ✅ **(Frontend - Aralık 2024)**
+- [x] AI destekli parça önerisi ✅ **(Frontend - Aralık 2025)**
 - [ ] Chatbot geliştirme (GPT entegrasyonu)
 - [ ] Otomatik fiyatlandırma
 - [ ] Talep tahmini
-- [x] Arıza teşhis asistanı ✅ **(Frontend - Aralık 2024)**
+- [x] Arıza teşhis asistanı ✅ **(Frontend - Aralık 2025)**
 - [ ] Görsel parça tanıma (computer vision)
 
 ---
@@ -476,7 +476,7 @@ locales/
 
 <div align="center">
 
-**Son Güncelleme:** 5 Aralık 2024  
+**Son Güncelleme:** 5 Aralık 2025  
 **Versiyon:** 3.1.0
 
 [← Ana Sayfa](README.md) • [Changelog →](CHANGELOG.md)
