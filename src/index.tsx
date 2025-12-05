@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { CurrencyProvider } from './context/CurrencyContext';
 import { AuthProvider } from './context/AuthContext';
@@ -8,6 +9,7 @@ import { RepairProvider } from './context/RepairContext';
 import { ProductProvider } from './context/ProductContext';
 import { OrderProvider } from './context/OrderContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -17,20 +19,24 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <CurrencyProvider>
-      <AuthProvider>
-        <NotificationProvider>
-          <ProductProvider>
-            <RepairProvider>
-              <CartProvider>
-                <OrderProvider>
-                  <App />
-                </OrderProvider>
-              </CartProvider>
-            </RepairProvider>
-          </ProductProvider>
-        </NotificationProvider>
-      </AuthProvider>
-    </CurrencyProvider>
+    <BrowserRouter>
+      <ThemeProvider>
+        <CurrencyProvider>
+          <AuthProvider>
+            <NotificationProvider>
+              <ProductProvider>
+                <RepairProvider>
+                  <CartProvider>
+                    <OrderProvider>
+                      <App />
+                    </OrderProvider>
+                  </CartProvider>
+                </RepairProvider>
+              </ProductProvider>
+            </NotificationProvider>
+          </AuthProvider>
+        </CurrencyProvider>
+      </ThemeProvider>
+    </BrowserRouter>
   </React.StrictMode>
 );

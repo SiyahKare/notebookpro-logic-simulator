@@ -10,9 +10,82 @@ versiyonlama [Semantic Versioning](https://semver.org/spec/v2.0.0.html) standard
 ## [Unreleased]
 
 ### 🚀 Planlanıyor
-- React Router v6 entegrasyonu
 - Backend API bağlantısı
 - Gerçek ödeme gateway entegrasyonu
+
+---
+
+## [2.0.0] - 2024-12-05
+
+### 🚀 Büyük Güncelleme - React Router & Dark Mode
+
+#### 🛣️ React Router v6 Entegrasyonu
+- **BrowserRouter**: URL tabanlı navigasyon sistemi
+- **Lazy Loading**: Performans için code splitting
+- **Protected Routes**: Rol bazlı sayfa koruması
+- **Yeni Sayfalar**:
+  - `/products` - Ürün listesi sayfası (filtreleme, arama, sıralama)
+  - `/product/:id` - Ürün detay sayfası (breadcrumb, tab'lar, yorumlar)
+  - `/dealer` - Bayi Dashboard (özel B2B panel)
+  - `/technician` - Teknisyen Dashboard (servis iş takibi)
+  - `/404` - Not Found sayfası
+
+#### 🌙 Dark Mode
+- **ThemeContext**: Tema yönetim sistemi
+- **3 Mod**: Light, Dark, System (otomatik)
+- **LocalStorage**: Tema tercihi kalıcılığı
+- **Toggle Button**: Navbar'da tema değiştirme butonu
+- **Tam Uyumluluk**: Tüm sayfalar ve bileşenler dark mode destekli
+
+#### 📱 PWA Desteği
+- **manifest.json**: Progressive Web App manifest
+- **Service Worker**: Offline cache ve background sync
+- **Install Prompt**: "Ana ekrana ekle" banner'ı
+- **Meta Tags**: iOS ve Android uyumlu meta etiketler
+
+#### 🎨 Yeni Bileşenler
+- `LoadingSpinner` - Sayfa yüklenme animasyonu
+- `Skeleton` - Placeholder bileşenleri
+- `ProductCardSkeleton` - Ürün kart placeholder
+- `StatCardSkeleton` - İstatistik kart placeholder
+
+#### 🏢 Bayi Dashboard
+- Genel bakış istatistikleri
+- Sipariş geçmişi
+- Ürün kataloğu (bayi fiyatlarıyla)
+- Fiyat listesi (Excel export)
+- Firma bilgileri
+
+#### 🔧 Teknisyen Dashboard
+- Atanan işler listesi
+- Servis durumu güncelleme
+- Performans metrikleri
+- Durum geçmişi görüntüleme
+
+#### ✨ Diğer İyileştirmeler
+- Navbar tamamen yenilendi (Link/useNavigate)
+- Cart sayfası dark mode desteği eklendi
+- Checkout sayfası dark mode desteği eklendi
+- Sepet miktar güncelleme fonksiyonu (`updateQuantity`)
+
+### 📝 Dosya Değişiklikleri
+- `src/App.tsx` - React Router entegrasyonu
+- `src/index.tsx` - BrowserRouter, ThemeProvider eklendi
+- `src/context/ThemeContext.tsx` - YENİ
+- `src/components/LoadingSpinner.tsx` - YENİ
+- `src/components/Skeleton.tsx` - YENİ
+- `src/components/Navbar.tsx` - React Router uyumlu
+- `src/pages/Products.tsx` - YENİ
+- `src/pages/ProductDetail.tsx` - YENİ
+- `src/pages/DealerDashboard.tsx` - YENİ
+- `src/pages/TechnicianDashboard.tsx` - YENİ
+- `src/pages/NotFound.tsx` - YENİ
+- `src/pages/Cart.tsx` - Güncellendi
+- `src/pages/Checkout.tsx` - Güncellendi
+- `src/context/CartContext.tsx` - updateQuantity eklendi
+- `public/manifest.json` - YENİ
+- `public/sw.js` - YENİ
+- `index.html` - PWA meta tags
 
 ---
 

@@ -14,6 +14,7 @@ interface CartContextType {
   cartItems: CartItem[];
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
+  updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   calculateCartTotals: () => CartTotals;
   generateQuotePDF: () => void; // B2B Teklif Özelliği
@@ -42,6 +43,18 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const removeFromCart = (productId: string) => {
     setCartItems(prev => prev.filter(item => item.product.id !== productId));
+  };
+
+  const updateQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(productId);
+      return;
+    }
+    setCartItems(prev => prev.map(item =>
+      item.product.id === productId
+        ? { ...item, quantity }
+        : item
+    ));
   };
 
   const clearCart = () => {
@@ -82,7 +95,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, clearCart, calculateCartTotals, generateQuotePDF }}>
+    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, updateQuantity, clearCart, calculateCartTotals, generateQuotePDF }}>
       {children}
     </CartContext.Provider>
   );
