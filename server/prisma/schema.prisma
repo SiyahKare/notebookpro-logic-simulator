@@ -1,0 +1,320 @@
+// Prisma Schema for NotebookPro
+// Using SQLite for development
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// NOTE: SQLite doesn't support enums, using String fields
+// Valid UserRole values: ADMIN, TECHNICIAN, DEALER, CUSTOMER
+// Valid ProductCategory: SCREEN, BATTERY, KEYBOARD, CHIPSET, RAM, STORAGE, MOTHERBOARD
+// Valid OrderStatus: PENDING, CONFIRMED, PREPARING, SHIPPED, DELIVERED, CANCELLED, REFUNDED
+// Valid RepairStatus: RECEIVED, DIAGNOSING, WAITING_PARTS, WAITING_APPROVAL, IN_REPAIR, QUALITY_CHECK, READY, DELIVERED, CANCELLED
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  name          String
+  phone         String?
+  role          String    @default("CUSTOMER")
+  isApproved    Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  companyTitle  String?
+  taxOffice     String?
+  taxNumber     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+  
+  orders        Order[]
+  repairs       Repair[]
+  reviews       Review[]
+  favorites     Favorite[]
+  notifications Notification[]
+  refreshTokens RefreshToken[]
+  addresses     Address[]
+  
+  @@index([email])
+  @@index([role])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+}
+
+model Address {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  fullName    String
+  phone       String
+  city        String
+  district    String
+  address     String
+  postalCode  String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  orders      Order[]
+  
+  @@index([userId])
+}
+
+model Product {
+  id                    String   @id @default(uuid())
+  sku                   String   @unique
+  name                  String
+  description           String?
+  category              String
+  priceUsd              Float
+  vatRate               Float    @default(0.20)
+  stock                 Int      @default(0)
+  criticalLimit         Int      @default(5)
+  dealerDiscountPercent Float    @default(0)
+  shelfLocation         String?
+  imageUrl              String?
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  compatibleModels CompatibleModel[]
+  reviews          Review[]
+  orderItems       OrderItem[]
+  repairParts      RepairPart[]
+  stockMovements   StockMovement[]
+  favorites        Favorite[]
+  
+  @@index([sku])
+  @@index([category])
+}
+
+model CompatibleModel {
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  modelName String
+  
+  @@index([productId])
+}
+
+model StockMovement {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type        String   // IN, OUT, ADJUSTMENT
+  quantity    Int
+  reason      String?
+  performedBy String?
+  createdAt   DateTime @default(now())
+  
+  @@index([productId])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([productId, userId])
+  @@index([productId])
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+model Order {
+  id             String    @id @default(uuid())
+  orderNumber    String    @unique
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  addressId      String?
+  address        Address?  @relation(fields: [addressId], references: [id])
+  status         String    @default("PENDING")
+  subtotal       Float
+  vatAmount      Float
+  discount       Float     @default(0)
+  shippingCost   Float     @default(0)
+  totalAmount    Float
+  couponCode     String?
+  couponDiscount Float     @default(0)
+  isGiftWrapped  Boolean   @default(false)
+  giftMessage    String?
+  paymentMethod  String?
+  paymentStatus  String    @default("PENDING")
+  trackingNumber String?
+  carrier        String?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  customerNote   String?
+  adminNote      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  items         OrderItem[]
+  statusHistory OrderStatusHistory[]
+  
+  @@index([userId])
+  @@index([status])
+  @@index([orderNumber])
+}
+
+model OrderItem {
+  id         String  @id @default(uuid())
+  orderId    String
+  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+  quantity   Int
+  unitPrice  Float
+  totalPrice Float
+  
+  @@index([orderId])
+}
+
+model OrderStatusHistory {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    String
+  note      String?
+  createdBy String?
+  createdAt DateTime @default(now())
+  
+  @@index([orderId])
+}
+
+model Repair {
+  id               String    @id @default(uuid())
+  trackingCode     String    @unique
+  userId           String?
+  user             User?     @relation(fields: [userId], references: [id])
+  customerName     String
+  customerPhone    String
+  customerEmail    String?
+  deviceBrand      String
+  deviceModel      String
+  serialNumber     String?
+  issueDescription String
+  technicianNotes  String?
+  status           String    @default("RECEIVED")
+  priority         String    @default("NORMAL")
+  estimatedCost    Float?
+  finalCost        Float?
+  isPaid           Boolean   @default(false)
+  warrantyStatus   String?
+  warrantyNotes    String?
+  technicianId     String?
+  receivedAt       DateTime  @default(now())
+  diagnosedAt      DateTime?
+  repairedAt       DateTime?
+  deliveredAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  parts         RepairPart[]
+  statusHistory RepairStatusHistory[]
+  
+  @@index([trackingCode])
+  @@index([userId])
+  @@index([status])
+}
+
+model RepairPart {
+  id        String  @id @default(uuid())
+  repairId  String
+  repair    Repair  @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Float
+  
+  @@index([repairId])
+}
+
+model RepairStatusHistory {
+  id        String   @id @default(uuid())
+  repairId  String
+  repair    Repair   @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  status    String
+  note      String?
+  createdBy String?
+  createdAt DateTime @default(now())
+  
+  @@index([repairId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // ORDER, REPAIR, STOCK, SYSTEM, PROMOTION
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([isRead])
+}
+
+model Coupon {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  type        String   // PERCENTAGE, FIXED
+  value       Float
+  minPurchase Float?
+  maxDiscount Float?
+  usageLimit  Int?
+  usedCount   Int      @default(0)
+  validFrom   DateTime @default(now())
+  validUntil  DateTime
+  isActive    Boolean  @default(true)
+  description String?
+  categories  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([code])
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  type      String   @default("string")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([key])
+}
