@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { asyncHandler, AppError } from '../middlewares/errorHandler.js';
 import { authenticate, adminOnly, staffOnly } from '../middlewares/auth.js';
+import { emailService } from '../services/email.service.js';
 
 const router = Router();
 
@@ -253,6 +254,24 @@ router.post('/', authenticate, asyncHandler(async (req: Request, res: Response) 
     }
   });
 
+  // Send order confirmation email
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  if (user?.email) {
+    emailService.sendOrderConfirmation(user.email, {
+      orderNumber: order.orderNumber,
+      customerName: user.name,
+      items: orderItems.map(item => ({
+        name: item.productName || 'Ürün',
+        quantity: item.quantity,
+        price: item.totalPrice,
+      })),
+      subtotal: order.subtotal,
+      shipping: order.shippingCost,
+      total: order.totalAmount,
+      address: address ? `${address.address}, ${address.district}/${address.city}` : undefined,
+    }).catch(err => console.error('Failed to send order email:', err));
+  }
+
   res.status(201).json({
     success: true,
     message: 'Sipariş başarıyla oluşturuldu',
@@ -323,6 +342,19 @@ router.patch('/:id/status', authenticate, adminOnly, asyncHandler(async (req: Re
         link: `/orders/${order.id}`
       }
     });
+  }
+
+  // Send shipping notification email
+  if (status === 'SHIPPED' && trackingNumber) {
+    const user = await prisma.user.findUnique({ where: { id: order.userId } });
+    if (user?.email) {
+      emailService.sendShippingNotification(user.email, {
+        orderNumber: order.orderNumber,
+        customerName: user.name,
+        trackingNumber,
+        carrier: carrier || 'Kargo',
+      }).catch(err => console.error('Failed to send shipping email:', err));
+    }
   }
 
   res.json({

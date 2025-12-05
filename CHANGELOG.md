@@ -11,8 +11,64 @@ versiyonlama [Semantic Versioning](https://semver.org/spec/v2.0.0.html) standard
 
 ### 🚀 Planlanıyor
 - Gerçek ödeme gateway entegrasyonu (iyzico, PayTR)
-- E-posta/SMS bildirim sistemi
+- SMS bildirim sistemi (Netgsm)
 - Mobil uygulama (React Native)
+
+---
+
+## [3.2.0] - 2025-12-05
+
+### 📧 E-posta Bildirim Sistemi
+
+#### 🔧 Email Service (`server/src/services/email.service.ts`)
+- **Nodemailer Entegrasyonu**: SMTP ve Ethereal test desteği
+- **Async Initialization**: E-posta servisi başlatma beklemesi
+- **Development Mode**: Otomatik Ethereal test hesabı oluşturma
+
+#### 📨 E-posta Şablonları
+| Şablon | Tetikleyici | Açıklama |
+|--------|-------------|----------|
+| **Welcome Email** | Yeni kayıt | Hoş geldin mesajı + kupon kodu |
+| **Order Confirmation** | Sipariş oluşturma | Ürün listesi, toplam, adres |
+| **Shipping Notification** | Kargo çıkışı | Takip no, kargo firması linki |
+| **Repair Status Update** | Servis durumu değişimi | Durum badge, takip kodu |
+| **Password Reset** | Şifre sıfırlama | Güvenli link (1 saat geçerli) |
+
+#### 🔗 Tetikleyiciler
+- `POST /api/auth/register` → Hoş geldin e-postası
+- `POST /api/orders` → Sipariş onay e-postası
+- `PATCH /api/orders/:id/status` (SHIPPED) → Kargo bildirimi
+- `PATCH /api/repairs/:id/status` → Servis durumu e-postası
+
+#### 🧪 Test API
+```bash
+POST /api/email/test
+{ "type": "welcome|order|shipping|repair", "email": "test@example.com" }
+```
+
+### 🔐 Auth İyileştirmeleri
+
+#### Demo Login API Entegrasyonu
+- **Gerçek API Login**: `demoLogin()` artık veritabanındaki test kullanıcılarıyla giriş yapıyor
+- **Token Management**: JWT token'lar localStorage'da saklanıyor
+- **Fallback Mode**: API başarısız olursa mock user kullanılıyor
+
+#### ProtectedRoute Fix
+- **Loading State**: Auth yüklenirken spinner gösteriliyor
+- **Race Condition Fix**: `isLoading` kontrolü ile erken redirect önlendi
+
+#### CouponContext Auth Kontrolü
+- **Admin Only API**: Kupon listesi sadece admin için API'den çekiliyor
+- **Public Fallback**: Diğer kullanıcılar için mock kuponlar
+
+### 🗂️ Yeni Dosyalar
+```
+server/
+├── src/services/email.service.ts   # E-posta servisi
+├── src/routes/email.routes.ts      # Test endpoint
+├── .env                            # Environment variables
+└── .gitignore                      # Server-specific ignores
+```
 
 ---
 

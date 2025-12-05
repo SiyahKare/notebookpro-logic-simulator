@@ -314,12 +314,22 @@ sequenceDiagram
 
 ### Hedefler
 
-- [ ] E-posta bildirimleri (SendGrid/Mailgun)
+- [x] E-posta bildirimleri (Nodemailer) ✅ **(Tamamlandı - 5 Aralık 2025)**
 - [ ] SMS bildirimleri (Netgsm/İleti Merkezi)
 - [ ] Push notifications (FCM)
 - [x] In-app bildirimler ✅ **(Tamamlandı - Aralık 2025)**
 - [x] AI Asistan bildirimleri ✅ **(Tamamlandı - Aralık 2025)**
 - [ ] WhatsApp Business API
+
+### E-posta Şablonları (Tamamlandı ✅)
+
+| Şablon | Tetikleyici | Durum |
+|--------|-------------|-------|
+| Hoş Geldin | Yeni kayıt | ✅ |
+| Sipariş Onayı | Sipariş oluşturma | ✅ |
+| Kargo Bildirimi | Status = SHIPPED | ✅ |
+| Servis Durumu | Repair status değişimi | ✅ |
+| Şifre Sıfırlama | Reset token | ✅ |
 
 ### Bildirim Tetikleyicileri
 
@@ -454,12 +464,13 @@ locales/
 | PostgreSQL | Çalışır | ✅ Tamamlandı |
 | JWT Auth | Çalışır | ✅ Tamamlandı |
 | Frontend API | Entegre | ✅ Tamamlandı |
+| E-posta Bildirimleri | Çalışır | ✅ Tamamlandı |
 | Sayfa yüklenme | < 2 saniye | ✅ Tamamlandı |
 | API yanıt süresi | < 200ms | ✅ Tamamlandı |
 
 ---
 
-## 📊 Proje İstatistikleri (v3.1.0)
+## 📊 Proje İstatistikleri (v3.2.0)
 
 | Kategori | Sayı |
 |----------|------|
@@ -467,17 +478,19 @@ locales/
 | React Context | 11 |
 | UI Bileşenleri | 16 |
 | Custom Hooks | 2 |
-| Backend Routes | 8 |
+| Backend Routes | 9 |
+| Backend Services | 1 (Email) |
 | Prisma Models | 11 |
-| API Endpoints | 40+ |
+| API Endpoints | 45+ |
 | PostgreSQL Tables | 15+ |
+| E-posta Şablonları | 5 |
 
 ---
 
 <div align="center">
 
 **Son Güncelleme:** 5 Aralık 2025  
-**Versiyon:** 3.1.0
+**Versiyon:** 3.2.0
 
 [← Ana Sayfa](README.md) • [Changelog →](CHANGELOG.md)
 

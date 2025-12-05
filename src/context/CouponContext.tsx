@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 import { couponsAPI, settingsAPI } from '../services/api';
+import { useAuth } from './AuthContext';
 
 export interface Coupon {
   id?: string;
@@ -100,13 +101,23 @@ export const CouponProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [giftWrap, setGiftWrap] = useState(false);
   const [giftMessage, setGiftMessage] = useState('');
   const [giftWrapPrice, setGiftWrapPrice] = useState(25);
+  
+  // Auth context for admin check
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
-  // Kuponları ve ayarları yükle
+  // Kuponları ve ayarları yükle (admin only için API, diğerleri mock data)
   const refreshCoupons = useCallback(async () => {
+    // Kupon listesi sadece admin için API'den çekilir
+    if (!isAdmin) {
+      setAvailableCoupons(mockCoupons);
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      // Kuponları yükle
+      // Kuponları yükle (Admin only endpoint)
       const couponsResponse = await couponsAPI.getAll();
       if (couponsResponse.success && couponsResponse.data?.coupons) {
         const mappedCoupons = couponsResponse.data.coupons.map(mapAPICouponToCoupon);
@@ -129,12 +140,12 @@ export const CouponProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
-  // İlk yüklemede kuponları çek
+  // Admin değiştiğinde kuponları yükle
   useEffect(() => {
     refreshCoupons();
-  }, [refreshCoupons]);
+  }, [isAdmin, refreshCoupons]);
 
   const applyCoupon = async (code: string, cartTotal: number): Promise<{ success: boolean; message: string }> => {
     try {

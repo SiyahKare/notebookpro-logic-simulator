@@ -91,6 +91,7 @@ Hem son kullanıcılar (B2C) hem de bayiler (B2B) için tasarlanmış, Türkiye 
 | **Database** | PostgreSQL 16 |
 | **ORM** | Prisma 5 |
 | **Authentication** | JWT (Access + Refresh tokens) |
+| **Email** | Nodemailer (SMTP / Ethereal) |
 
 ---
 
@@ -117,7 +118,7 @@ Hem son kullanıcılar (B2C) hem de bayiler (B2B) için tasarlanmış, Türkiye 
     ├── 📁 src/
     │   ├── 📁 config/         # Environment, DB config
     │   ├── 📁 middlewares/    # Auth, Error handling
-    │   ├── 📁 routes/         # 8 API route dosyası
+    │   ├── 📁 routes/         # 9 API route dosyası
     │   │   ├── auth.routes.ts
     │   │   ├── product.routes.ts
     │   │   ├── order.routes.ts
@@ -125,7 +126,10 @@ Hem son kullanıcılar (B2C) hem de bayiler (B2B) için tasarlanmış, Türkiye 
     │   │   ├── user.routes.ts
     │   │   ├── notification.routes.ts
     │   │   ├── coupon.routes.ts
-    │   │   └── setting.routes.ts
+    │   │   ├── setting.routes.ts
+    │   │   └── email.routes.ts       # 📧 Test endpoint
+    │   ├── 📁 services/       # Business logic
+    │   │   └── email.service.ts      # 📧 Nodemailer
     │   └── index.ts           # Express server
     └── package.json
 ```

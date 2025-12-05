@@ -41,7 +41,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<boolean>;
-  demoLogin: (role: UserRole) => void; // Demo login for development
+  demoLogin: (role: UserRole) => Promise<void>; // Demo login with real API
   register: (data: RegisterData) => Promise<boolean>;
   logout: () => Promise<void>;
   checkDealerAccess: () => boolean;
@@ -178,55 +178,69 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Demo login for development - creates a mock user without API
-  const demoLogin = (role: UserRole) => {
-    const demoUsers: Record<UserRole, User> = {
-      [UserRole.ADMIN]: {
-        id: 'demo-admin',
-        name: 'Demo Admin',
-        email: 'admin@demo.com',
-        phone: '5551112233',
-        role: UserRole.ADMIN,
-        is_approved: true,
-        created_at: new Date(),
-      },
-      [UserRole.TECHNICIAN]: {
-        id: 'demo-tech',
-        name: 'Demo Teknisyen',
-        email: 'tech@demo.com',
-        phone: '5552223344',
-        role: UserRole.TECHNICIAN,
-        is_approved: true,
-        created_at: new Date(),
-      },
-      [UserRole.DEALER]: {
-        id: 'demo-dealer',
-        name: 'Demo Bayi',
-        email: 'dealer@demo.com',
-        phone: '5553334455',
-        role: UserRole.DEALER,
-        is_approved: true,
-        company_details: {
-          title: 'Demo Bilgisayar Ltd.',
-          taxOffice: 'Demo VD',
-          taxNumber: '1234567890',
-          address: 'Demo Adres',
-        },
-        created_at: new Date(),
-      },
-      [UserRole.CUSTOMER]: {
-        id: 'demo-customer',
-        name: 'Demo Müşteri',
-        email: 'customer@demo.com',
-        phone: '5554445566',
-        role: UserRole.CUSTOMER,
-        is_approved: true,
-        created_at: new Date(),
-      },
+  // Demo login - uses real API with seeded test users
+  const demoLogin = async (role: UserRole) => {
+    // Seeded test user credentials
+    const demoCredentials: Record<UserRole, { email: string; password: string }> = {
+      [UserRole.ADMIN]: { email: 'admin@notebookpro.com', password: 'admin123' },
+      [UserRole.TECHNICIAN]: { email: 'ahmet@notebookpro.com', password: 'tech123' },
+      [UserRole.DEALER]: { email: 'info@egepc.com', password: 'dealer123' },
+      [UserRole.CUSTOMER]: { email: 'ali@gmail.com', password: 'customer123' },
     };
 
-    setUser(demoUsers[role]);
-    setError(null);
+    const credentials = demoCredentials[role];
+    const success = await login(credentials.email, credentials.password);
+    
+    if (!success) {
+      // Fallback: create mock user if API login fails (development mode)
+      console.warn('API login failed, using mock user for demo');
+      const mockUsers: Record<UserRole, User> = {
+        [UserRole.ADMIN]: {
+          id: 'demo-admin',
+          name: 'Demo Admin',
+          email: 'admin@notebookpro.com',
+          phone: '5551112233',
+          role: UserRole.ADMIN,
+          is_approved: true,
+          created_at: new Date(),
+        },
+        [UserRole.TECHNICIAN]: {
+          id: 'demo-tech',
+          name: 'Demo Teknisyen',
+          email: 'ahmet@notebookpro.com',
+          phone: '5552223344',
+          role: UserRole.TECHNICIAN,
+          is_approved: true,
+          created_at: new Date(),
+        },
+        [UserRole.DEALER]: {
+          id: 'demo-dealer',
+          name: 'Demo Bayi',
+          email: 'info@egepc.com',
+          phone: '5553334455',
+          role: UserRole.DEALER,
+          is_approved: true,
+          company_details: {
+            title: 'Demo Bilgisayar Ltd.',
+            taxOffice: 'Demo VD',
+            taxNumber: '1234567890',
+            address: 'Demo Adres',
+          },
+          created_at: new Date(),
+        },
+        [UserRole.CUSTOMER]: {
+          id: 'demo-customer',
+          name: 'Demo Müşteri',
+          email: 'ali@gmail.com',
+          phone: '5554445566',
+          role: UserRole.CUSTOMER,
+          is_approved: true,
+          created_at: new Date(),
+        },
+      };
+      setUser(mockUsers[role]);
+      setError(null);
+    }
   };
 
   const approveDealer = async (userId: string) => {

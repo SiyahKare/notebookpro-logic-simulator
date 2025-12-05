@@ -6,6 +6,7 @@ import { prisma } from '../config/database.js';
 import { env } from '../config/env.js';
 import { asyncHandler, AppError } from '../middlewares/errorHandler.js';
 import { authenticate } from '../middlewares/auth.js';
+import { emailService } from '../services/email.service.js';
 
 const router = Router();
 
@@ -79,6 +80,10 @@ router.post('/register', asyncHandler(async (req: Request, res: Response) => {
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
     }
   });
+
+  // Send welcome email (async, don't wait)
+  emailService.sendWelcomeEmail(email, name)
+    .catch(err => console.error('Failed to send welcome email:', err));
 
   res.status(201).json({
     success: true,

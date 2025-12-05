@@ -300,7 +300,7 @@ const Navbar: React.FC = () => {
             </Link>
 
             {/* User Profile (Simulation Switcher) */}
-            <div className="relative group">
+            <div className="relative group pb-2 -mb-2">
               <button className={`flex items-center gap-2 text-sm font-medium transition ${
                 actualTheme === 'dark' ? 'text-slate-300 hover:text-red-400' : 'text-slate-700 hover:text-red-600'
               }`}>
@@ -310,9 +310,10 @@ const Navbar: React.FC = () => {
                 </svg>
               </button>
               {/* Dropdown for Sim */}
-              <div className={`absolute right-0 mt-2 w-48 rounded-xl shadow-xl overflow-hidden hidden group-hover:block p-2 ${
-                actualTheme === 'dark' ? 'bg-slate-700 border border-slate-600' : 'bg-white border border-slate-100'
-              }`}>
+              <div className={`absolute right-0 top-full pt-2 w-48 hidden group-hover:block`}>
+                <div className={`rounded-xl shadow-xl overflow-hidden p-2 ${
+                  actualTheme === 'dark' ? 'bg-slate-700 border border-slate-600' : 'bg-white border border-slate-100'
+                }`}>
                 <div className={`text-[10px] px-2 pb-1 ${actualTheme === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>
                   SİMÜLASYON MODU
                 </div>
@@ -331,6 +332,7 @@ const Navbar: React.FC = () => {
                 <button onClick={() => demoLogin(UserRole.CUSTOMER)} className={`block w-full text-left px-3 py-2 text-xs rounded-lg ${
                   actualTheme === 'dark' ? 'text-slate-200 hover:bg-slate-600' : 'text-slate-700 hover:bg-red-50'
                 }`}>👤 Son Kullanıcı</button>
+                </div>
               </div>
             </div>
           </div>

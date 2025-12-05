@@ -17,8 +17,8 @@ export const env = {
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
   
-  // CORS
-  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3001',
+  // CORS - Multiple origins for dev and production
+  CORS_ORIGINS: (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:3001,http://localhost:3002,https://notebookpro.siyahkare.com').split(','),
   
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
@@ -27,6 +27,13 @@ export const env = {
   // File Upload
   MAX_FILE_SIZE: parseInt(process.env.MAX_FILE_SIZE || '5242880', 10),
   UPLOAD_DIR: process.env.UPLOAD_DIR || 'uploads',
+  
+  // Email (SMTP)
+  SMTP_HOST: process.env.SMTP_HOST || '',
+  SMTP_PORT: parseInt(process.env.SMTP_PORT || '587', 10),
+  SMTP_USER: process.env.SMTP_USER || '',
+  SMTP_PASS: process.env.SMTP_PASS || '',
+  SMTP_FROM: process.env.SMTP_FROM || 'noreply@notebookpro.com',
   
   // Helpers
   isDev: process.env.NODE_ENV === 'development',

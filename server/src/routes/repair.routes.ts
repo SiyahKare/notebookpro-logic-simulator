@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { asyncHandler, AppError } from '../middlewares/errorHandler.js';
 import { authenticate, optionalAuth, adminOnly, staffOnly } from '../middlewares/auth.js';
+import { emailService } from '../services/email.service.js';
 
 const router = Router();
 
@@ -258,29 +259,41 @@ router.patch('/:id/status', authenticate, staffOnly, asyncHandler(async (req: Re
     }
   });
 
-  // Create notification if user exists
-  if (repair.userId) {
-    const statusMessages: Record<string, string> = {
-      DIAGNOSING: 'Cihazınız inceleniyor',
-      WAITING_PARTS: 'Parça bekleniyor',
-      WAITING_APPROVAL: 'Onayınız bekleniyor',
-      IN_REPAIR: 'Tamir işlemi başladı',
-      QUALITY_CHECK: 'Kalite kontrol aşamasında',
-      READY: 'Cihazınız hazır, teslim alabilirsiniz',
-      DELIVERED: 'Cihazınız teslim edildi'
-    };
+  // Status messages
+  const statusMessages: Record<string, string> = {
+    RECEIVED: 'Cihazınız teslim alındı',
+    DIAGNOSING: 'Cihazınız inceleniyor',
+    WAITING_PARTS: 'Parça bekleniyor',
+    WAITING_APPROVAL: 'Onayınız bekleniyor',
+    IN_REPAIR: 'Tamir işlemi başladı',
+    QUALITY_CHECK: 'Kalite kontrol aşamasında',
+    READY: 'Cihazınız hazır, teslim alabilirsiniz',
+    DELIVERED: 'Cihazınız teslim edildi',
+    CANCELLED: 'Servis kaydı iptal edildi'
+  };
 
-    if (statusMessages[status]) {
-      await prisma.notification.create({
-        data: {
-          userId: repair.userId,
-          type: 'REPAIR',
-          title: statusMessages[status],
-          message: `${repair.trackingCode}: ${statusMessages[status]}`,
-          link: `/service/${repair.trackingCode}`
-        }
-      });
-    }
+  // Create notification if user exists
+  if (repair.userId && statusMessages[status]) {
+    await prisma.notification.create({
+      data: {
+        userId: repair.userId,
+        type: 'REPAIR',
+        title: statusMessages[status],
+        message: `${repair.trackingCode}: ${statusMessages[status]}`,
+        link: `/service/${repair.trackingCode}`
+      }
+    });
+  }
+
+  // Send email notification
+  if (repair.customerEmail && statusMessages[status]) {
+    emailService.sendRepairStatusUpdate(repair.customerEmail, {
+      trackingCode: repair.trackingCode,
+      customerName: repair.customerName,
+      deviceInfo: `${repair.deviceBrand} ${repair.deviceModel}`,
+      status,
+      statusMessage: statusMessages[status],
+    }).catch(err => console.error('Failed to send repair status email:', err));
   }
 
   res.json({

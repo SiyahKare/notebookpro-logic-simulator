@@ -1,7 +1,10 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-// API Base URL
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+// API Base URL - Production veya localhost
+const API_URL = import.meta.env.VITE_API_URL || 
+  (window.location.hostname.includes('siyahkare.com') 
+    ? 'https://notebookpro-api.siyahkare.com/api'
+    : 'http://localhost:5001/api');
 
 // Token storage keys
 const ACCESS_TOKEN_KEY = 'notebookpro_access_token';

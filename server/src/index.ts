@@ -15,6 +15,7 @@ import repairRoutes from './routes/repair.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import couponRoutes from './routes/coupon.routes.js';
 import settingRoutes from './routes/setting.routes.js';
+import emailRoutes from './routes/email.routes.js';
 
 const app: Express = express();
 
@@ -25,9 +26,24 @@ const app: Express = express();
 // Security headers
 app.use(helmet());
 
-// CORS
+// CORS - Multiple origins support
 app.use(cors({
-  origin: env.CORS_ORIGIN,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is allowed
+    if (env.CORS_ORIGINS.some(allowed => origin.includes(allowed.replace('https://', '').replace('http://', '')))) {
+      return callback(null, true);
+    }
+    
+    // In development, allow all origins
+    if (env.isDev) {
+      return callback(null, true);
+    }
+    
+    callback(new Error('CORS not allowed'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -67,6 +83,7 @@ app.use('/api/repairs', repairRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/settings', settingRoutes);
+app.use('/api/email', emailRoutes);
 
 // Health check
 app.get('/api/health', (_req: Request, res: Response) => {
