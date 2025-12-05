@@ -1,133 +1,258 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 import { Order, OrderStatus, CartItem, OrderFilters } from '../types';
+import { ordersAPI } from '../services/api';
+import { useAuth } from './AuthContext';
 
-// Mock orders for demo
-const mockOrders: Order[] = [
-  {
-    id: 'ORD-2024-001',
-    userId: 'u_customer1',
-    customerName: 'Ahmet Yılmaz',
-    customerPhone: '0532 123 4567',
-    customerEmail: 'ahmet@email.com',
-    customerAddress: 'Kadıköy, İstanbul',
-    items: [],
-    totalAmount: 2859.90,
-    status: OrderStatus.PROCESSING,
-    createdAt: new Date('2024-11-25'),
-  },
-  {
-    id: 'ORD-2024-002',
-    userId: 'u_dealer1',
-    customerName: 'Mega Bilgisayar Ltd.',
-    customerPhone: '0212 555 7890',
-    customerEmail: 'siparis@megabilgisayar.com',
-    customerAddress: 'Perpa Ticaret Merkezi, Şişli',
-    items: [],
-    totalAmount: 15420.00,
-    status: OrderStatus.SHIPPED,
-    trackingNumber: '3456789012',
-    shippingCompany: 'Yurtiçi Kargo',
-    createdAt: new Date('2024-11-20'),
-    shippedAt: new Date('2024-11-22'),
-  },
-  {
-    id: 'ORD-2024-003',
-    userId: 'u_customer2',
-    customerName: 'Mehmet Demir',
-    customerPhone: '0544 987 6543',
-    customerEmail: 'mehmet.demir@gmail.com',
-    customerAddress: 'Çankaya, Ankara',
-    items: [],
-    totalAmount: 4589.80,
-    status: OrderStatus.DELIVERED,
-    trackingNumber: '9876543210',
-    shippingCompany: 'Aras Kargo',
-    createdAt: new Date('2024-11-15'),
-    shippedAt: new Date('2024-11-17'),
-    deliveredAt: new Date('2024-11-19'),
-  },
-];
+// API'den gelen order formatı
+interface APIOrder {
+  id: string;
+  orderNumber: string;
+  userId: string;
+  user?: { name: string; phone?: string; email: string };
+  address?: { fullName: string; phone: string; city: string; district: string; address: string };
+  status: string;
+  subtotal: number;
+  vatAmount: number;
+  discount: number;
+  shippingCost: number;
+  totalAmount: number;
+  couponCode?: string;
+  couponDiscount: number;
+  trackingNumber?: string;
+  carrier?: string;
+  customerNote?: string;
+  adminNote?: string;
+  createdAt: string;
+  shippedAt?: string;
+  deliveredAt?: string;
+  items?: {
+    id: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    product: {
+      id: string;
+      sku: string;
+      name: string;
+      category: string;
+      imageUrl?: string;
+      priceUsd: number;
+    };
+  }[];
+}
+
+// Status mapping
+const mapAPIStatusToOrderStatus = (status: string): OrderStatus => {
+  const statusMap: Record<string, OrderStatus> = {
+    'PENDING': OrderStatus.PROCESSING,
+    'CONFIRMED': OrderStatus.PROCESSING,
+    'PREPARING': OrderStatus.PROCESSING,
+    'SHIPPED': OrderStatus.SHIPPED,
+    'DELIVERED': OrderStatus.DELIVERED,
+    'CANCELLED': OrderStatus.CANCELLED,
+    'REFUNDED': OrderStatus.CANCELLED,
+  };
+  return statusMap[status] || OrderStatus.PROCESSING;
+};
+
+// API order'ı frontend formatına çevir
+const mapAPIOrderToOrder = (apiOrder: APIOrder): Order => ({
+  id: apiOrder.orderNumber || apiOrder.id,
+  userId: apiOrder.userId,
+  customerName: apiOrder.address?.fullName || apiOrder.user?.name || 'Misafir',
+  customerPhone: apiOrder.address?.phone || apiOrder.user?.phone,
+  customerEmail: apiOrder.user?.email,
+  customerAddress: apiOrder.address 
+    ? `${apiOrder.address.address}, ${apiOrder.address.district}/${apiOrder.address.city}`
+    : undefined,
+  items: apiOrder.items?.map(item => ({
+    product: {
+      id: item.product.id,
+      sku: item.product.sku,
+      name: item.product.name,
+      category: item.product.category.toLowerCase() as any,
+      price_usd: item.product.priceUsd,
+      vat_rate: 0.20,
+      stock: 0,
+      critical_limit: 0,
+      shelf_location: '',
+      compatible_models: [],
+      image_url: item.product.imageUrl,
+    },
+    quantity: item.quantity,
+  })) || [],
+  totalAmount: apiOrder.totalAmount,
+  status: mapAPIStatusToOrderStatus(apiOrder.status),
+  trackingNumber: apiOrder.trackingNumber,
+  shippingCompany: apiOrder.carrier,
+  createdAt: new Date(apiOrder.createdAt),
+  shippedAt: apiOrder.shippedAt ? new Date(apiOrder.shippedAt) : undefined,
+  deliveredAt: apiOrder.deliveredAt ? new Date(apiOrder.deliveredAt) : undefined,
+  notes: apiOrder.adminNote || apiOrder.customerNote,
+});
 
 interface OrderContextType {
   orders: Order[];
+  isLoading: boolean;
+  error: string | null;
   placeOrder: (items: CartItem[], totalAmount: number, customerInfo: { 
     userId: string; 
     name: string;
     phone?: string;
     email?: string;
     address?: string;
-  }) => Order;
-  updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void;
-  updateTrackingNumber: (orderId: string, trackingNumber: string, shippingCompany?: string) => void;
+    addressId?: string;
+    couponCode?: string;
+  }) => Promise<Order>;
+  updateOrderStatus: (orderId: string, newStatus: OrderStatus) => Promise<void>;
+  updateTrackingNumber: (orderId: string, trackingNumber: string, shippingCompany?: string) => Promise<void>;
   updateOrderNotes: (orderId: string, notes: string) => void;
   getOrdersByUserId: (userId: string) => Order[];
   getFilteredOrders: (filters: OrderFilters) => Order[];
   generateInvoiceHTML: (order: Order) => string;
+  refreshOrders: () => Promise<void>;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
 export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [orders, setOrders] = useState<Order[]>(mockOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+
+  // Siparişleri yükle
+  const refreshOrders = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await ordersAPI.getAll({ limit: 100 });
+      
+      if (response.success && response.data?.orders) {
+        const mappedOrders = response.data.orders.map(mapAPIOrderToOrder);
+        setOrders(mappedOrders);
+      }
+    } catch (err) {
+      console.error('Failed to fetch orders:', err);
+      setError('Siparişler yüklenemedi');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // User değiştiğinde siparişleri yükle
+  useEffect(() => {
+    if (user) {
+      refreshOrders();
+    }
+  }, [user, refreshOrders]);
 
   /**
    * Yeni Sipariş Oluşturma
    */
-  const placeOrder = (
+  const placeOrder = async (
     items: CartItem[], 
     totalAmount: number, 
-    customerInfo: { userId: string; name: string; phone?: string; email?: string; address?: string }
-  ): Order => {
-    const newOrder: Order = {
-      id: `ORD-${new Date().getFullYear()}-${String(orders.length + 1).padStart(3, '0')}`,
-      userId: customerInfo.userId,
-      customerName: customerInfo.name,
-      customerPhone: customerInfo.phone,
-      customerEmail: customerInfo.email,
-      customerAddress: customerInfo.address,
-      items: [...items],
-      totalAmount: totalAmount,
-      status: OrderStatus.PROCESSING,
-      createdAt: new Date(),
-    };
-
-    setOrders(prev => [newOrder, ...prev]);
-    return newOrder;
+    customerInfo: { 
+      userId: string; 
+      name: string; 
+      phone?: string; 
+      email?: string; 
+      address?: string;
+      addressId?: string;
+      couponCode?: string;
+    }
+  ): Promise<Order> => {
+    try {
+      const response = await ordersAPI.create({
+        items: items.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+        })),
+        addressId: customerInfo.addressId,
+        couponCode: customerInfo.couponCode,
+        customerNote: customerInfo.address,
+      });
+      
+      if (response.success && response.data) {
+        const newOrder = mapAPIOrderToOrder(response.data);
+        setOrders(prev => [newOrder, ...prev]);
+        return newOrder;
+      }
+      
+      throw new Error('Sipariş oluşturulamadı');
+    } catch (err) {
+      console.error('Failed to create order:', err);
+      throw err;
+    }
   };
 
   /**
    * Admin Sipariş Durumu Güncelleme
    */
-  const updateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
-    setOrders(prev => prev.map(order => {
-      if (order.id !== orderId) return order;
+  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    // Frontend status'u API status'a çevir
+    const statusMap: Record<OrderStatus, string> = {
+      [OrderStatus.PROCESSING]: 'PREPARING',
+      [OrderStatus.SHIPPED]: 'SHIPPED',
+      [OrderStatus.DELIVERED]: 'DELIVERED',
+      [OrderStatus.CANCELLED]: 'CANCELLED',
+    };
+
+    try {
+      const response = await ordersAPI.updateStatus(orderId, {
+        status: statusMap[newStatus] || 'PENDING',
+      });
       
-      const updates: Partial<Order> = { status: newStatus };
-      
-      if (newStatus === OrderStatus.SHIPPED && !order.shippedAt) {
-        updates.shippedAt = new Date();
+      if (response.success) {
+        setOrders(prev => prev.map(order => {
+          if (order.id !== orderId) return order;
+          
+          const updates: Partial<Order> = { status: newStatus };
+          
+          if (newStatus === OrderStatus.SHIPPED && !order.shippedAt) {
+            updates.shippedAt = new Date();
+          }
+          if (newStatus === OrderStatus.DELIVERED && !order.deliveredAt) {
+            updates.deliveredAt = new Date();
+          }
+          
+          return { ...order, ...updates };
+        }));
       }
-      if (newStatus === OrderStatus.DELIVERED && !order.deliveredAt) {
-        updates.deliveredAt = new Date();
-      }
-      
-      return { ...order, ...updates };
-    }));
+    } catch (err) {
+      console.error('Failed to update order status:', err);
+      throw err;
+    }
   };
 
   /**
    * Kargo Takip No Güncelleme
    */
-  const updateTrackingNumber = (orderId: string, trackingNumber: string, shippingCompany?: string) => {
-    setOrders(prev => prev.map(order => 
-      order.id === orderId 
-        ? { ...order, trackingNumber, shippingCompany: shippingCompany || order.shippingCompany } 
-        : order
-    ));
+  const updateTrackingNumber = async (orderId: string, trackingNumber: string, shippingCompany?: string) => {
+    try {
+      const response = await ordersAPI.updateStatus(orderId, {
+        status: 'SHIPPED',
+        trackingNumber,
+        carrier: shippingCompany,
+      });
+      
+      if (response.success) {
+        setOrders(prev => prev.map(order => 
+          order.id === orderId 
+            ? { ...order, trackingNumber, shippingCompany: shippingCompany || order.shippingCompany, shippedAt: new Date() } 
+            : order
+        ));
+      }
+    } catch (err) {
+      console.error('Failed to update tracking number:', err);
+      throw err;
+    }
   };
 
   /**
-   * Sipariş Notu Güncelleme
+   * Sipariş Notu Güncelleme (Local only)
    */
   const updateOrderNotes = (orderId: string, notes: string) => {
     setOrders(prev => prev.map(order => 
@@ -285,14 +410,17 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   return (
     <OrderContext.Provider value={{ 
-      orders, 
+      orders,
+      isLoading,
+      error,
       placeOrder, 
       updateOrderStatus, 
       updateTrackingNumber,
       updateOrderNotes,
       getOrdersByUserId,
       getFilteredOrders,
-      generateInvoiceHTML
+      generateInvoiceHTML,
+      refreshOrders,
     }}>
       {children}
     </OrderContext.Provider>

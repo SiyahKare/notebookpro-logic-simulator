@@ -12,7 +12,7 @@ const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const { cartItems } = useCart();
   const { exchangeRate } = useCurrency();
-  const { user, login } = useAuth();
+  const { user, demoLogin } = useAuth();
   const { actualTheme, toggleTheme } = useTheme();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -316,19 +316,19 @@ const Navbar: React.FC = () => {
                 <div className={`text-[10px] px-2 pb-1 ${actualTheme === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>
                   SİMÜLASYON MODU
                 </div>
-                <button onClick={() => login('u_admin')} className={`block w-full text-left px-3 py-2 text-xs rounded-lg ${
+                <button onClick={() => demoLogin(UserRole.ADMIN)} className={`block w-full text-left px-3 py-2 text-xs rounded-lg ${
                   actualTheme === 'dark' ? 'text-slate-200 hover:bg-slate-600' : 'text-slate-700 hover:bg-red-50'
                 }`}>👑 Admin</button>
-                <button onClick={() => login('u_tech_1')} className={`block w-full text-left px-3 py-2 text-xs rounded-lg ${
+                <button onClick={() => demoLogin(UserRole.TECHNICIAN)} className={`block w-full text-left px-3 py-2 text-xs rounded-lg ${
                   actualTheme === 'dark' ? 'text-slate-200 hover:bg-slate-600' : 'text-slate-700 hover:bg-red-50'
                 }`}>🔧 Teknisyen</button>
-                <button onClick={() => login('u_dealer_approved')} className={`block w-full text-left px-3 py-2 text-xs rounded-lg ${
+                <button onClick={() => demoLogin(UserRole.DEALER)} className={`block w-full text-left px-3 py-2 text-xs rounded-lg ${
                   actualTheme === 'dark' ? 'text-slate-200 hover:bg-slate-600' : 'text-slate-700 hover:bg-red-50'
                 }`}>🏢 Bayi (Onaylı)</button>
-                <button onClick={() => login('u_dealer_pending')} className={`block w-full text-left px-3 py-2 text-xs rounded-lg ${
+                <button onClick={() => demoLogin(UserRole.DEALER)} className={`block w-full text-left px-3 py-2 text-xs rounded-lg ${
                   actualTheme === 'dark' ? 'text-slate-200 hover:bg-slate-600' : 'text-slate-700 hover:bg-red-50'
                 }`}>⏳ Bayi (Bekleyen)</button>
-                <button onClick={() => login('u_customer')} className={`block w-full text-left px-3 py-2 text-xs rounded-lg ${
+                <button onClick={() => demoLogin(UserRole.CUSTOMER)} className={`block w-full text-left px-3 py-2 text-xs rounded-lg ${
                   actualTheme === 'dark' ? 'text-slate-200 hover:bg-slate-600' : 'text-slate-700 hover:bg-red-50'
                 }`}>👤 Son Kullanıcı</button>
               </div>
@@ -425,16 +425,16 @@ const Navbar: React.FC = () => {
               SİMÜLASYON MODU
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => { login('u_admin'); setIsMenuOpen(false); }} className={`px-3 py-2 text-xs rounded-lg text-left ${
+              <button onClick={() => { demoLogin(UserRole.ADMIN); setIsMenuOpen(false); }} className={`px-3 py-2 text-xs rounded-lg text-left ${
                 actualTheme === 'dark' ? 'bg-slate-700 text-slate-200' : 'bg-slate-50 text-slate-700'
               }`}>👑 Admin</button>
-              <button onClick={() => { login('u_tech_1'); setIsMenuOpen(false); }} className={`px-3 py-2 text-xs rounded-lg text-left ${
+              <button onClick={() => { demoLogin(UserRole.TECHNICIAN); setIsMenuOpen(false); }} className={`px-3 py-2 text-xs rounded-lg text-left ${
                 actualTheme === 'dark' ? 'bg-slate-700 text-slate-200' : 'bg-slate-50 text-slate-700'
               }`}>🔧 Teknisyen</button>
-              <button onClick={() => { login('u_dealer_approved'); setIsMenuOpen(false); }} className={`px-3 py-2 text-xs rounded-lg text-left ${
+              <button onClick={() => { demoLogin(UserRole.DEALER); setIsMenuOpen(false); }} className={`px-3 py-2 text-xs rounded-lg text-left ${
                 actualTheme === 'dark' ? 'bg-slate-700 text-slate-200' : 'bg-slate-50 text-slate-700'
               }`}>🏢 Bayi</button>
-              <button onClick={() => { login('u_customer'); setIsMenuOpen(false); }} className={`px-3 py-2 text-xs rounded-lg text-left ${
+              <button onClick={() => { demoLogin(UserRole.CUSTOMER); setIsMenuOpen(false); }} className={`px-3 py-2 text-xs rounded-lg text-left ${
                 actualTheme === 'dark' ? 'bg-slate-700 text-slate-200' : 'bg-slate-50 text-slate-700'
               }`}>👤 Müşteri</button>
             </div>

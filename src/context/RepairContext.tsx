@@ -1,11 +1,111 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 import { RepairRecord, RepairStatus, WarrantyResult, RepairFilters, StatusHistoryEntry } from '../types';
-import { mockRepairRecords, mockUsers, mockPartners } from '../data/mockData';
+import { repairsAPI } from '../services/api';
 import { generateRepairQRLink } from '../utils/helpers';
+import { useAuth } from './AuthContext';
+
+// API'den gelen repair formatı
+interface APIRepair {
+  id: string;
+  trackingCode: string;
+  userId?: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  deviceBrand: string;
+  deviceModel: string;
+  serialNumber?: string;
+  issueDescription: string;
+  technicianNotes?: string;
+  status: string;
+  priority: string;
+  estimatedCost?: number;
+  finalCost?: number;
+  isPaid: boolean;
+  warrantyStatus?: string;
+  warrantyNotes?: string;
+  technicianId?: string;
+  receivedAt: string;
+  diagnosedAt?: string;
+  repairedAt?: string;
+  deliveredAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  statusHistory?: {
+    status: string;
+    note?: string;
+    createdBy?: string;
+    createdAt: string;
+  }[];
+}
+
+// Status mapping API -> Frontend
+const mapAPIStatusToRepairStatus = (status: string): RepairStatus => {
+  const statusMap: Record<string, RepairStatus> = {
+    'RECEIVED': RepairStatus.RECEIVED,
+    'DIAGNOSING': RepairStatus.DIAGNOSING,
+    'WAITING_PARTS': RepairStatus.WAITING_PARTS,
+    'WAITING_APPROVAL': RepairStatus.WAITING_APPROVAL,
+    'IN_REPAIR': RepairStatus.IN_PROGRESS,
+    'QUALITY_CHECK': RepairStatus.IN_PROGRESS,
+    'READY': RepairStatus.COMPLETED,
+    'DELIVERED': RepairStatus.DELIVERED,
+    'CANCELLED': RepairStatus.CANCELLED,
+  };
+  return statusMap[status] || RepairStatus.RECEIVED;
+};
+
+// Status mapping Frontend -> API
+const mapRepairStatusToAPIStatus = (status: RepairStatus): string => {
+  const statusMap: Record<RepairStatus, string> = {
+    [RepairStatus.RECEIVED]: 'RECEIVED',
+    [RepairStatus.DIAGNOSING]: 'DIAGNOSING',
+    [RepairStatus.WAITING_PARTS]: 'WAITING_PARTS',
+    [RepairStatus.WAITING_APPROVAL]: 'WAITING_APPROVAL',
+    [RepairStatus.IN_PROGRESS]: 'IN_REPAIR',
+    [RepairStatus.AT_PARTNER]: 'IN_REPAIR',
+    [RepairStatus.IN_WARRANTY]: 'IN_REPAIR',
+    [RepairStatus.COMPLETED]: 'READY',
+    [RepairStatus.DELIVERED]: 'DELIVERED',
+    [RepairStatus.CANCELLED]: 'CANCELLED',
+  };
+  return statusMap[status] || 'RECEIVED';
+};
+
+// API repair'ı frontend formatına çevir
+const mapAPIRepairToRepairRecord = (apiRepair: APIRepair): RepairRecord => ({
+  id: apiRepair.id,
+  tracking_code: apiRepair.trackingCode,
+  customer_name: apiRepair.customerName,
+  customer_phone: apiRepair.customerPhone,
+  customer_email: apiRepair.customerEmail,
+  device_brand: apiRepair.deviceBrand,
+  device_model: apiRepair.deviceModel,
+  serial_number: apiRepair.serialNumber,
+  issue_description: apiRepair.issueDescription,
+  status: mapAPIStatusToRepairStatus(apiRepair.status),
+  statusHistory: apiRepair.statusHistory?.map(sh => ({
+    status: mapAPIStatusToRepairStatus(sh.status),
+    timestamp: new Date(sh.createdAt),
+    note: sh.note,
+    updatedBy: sh.createdBy,
+  })) || [],
+  technician_notes: apiRepair.technicianNotes,
+  assigned_technician_id: apiRepair.technicianId,
+  estimated_cost_tl: apiRepair.estimatedCost,
+  price_to_customer: apiRepair.finalCost,
+  is_warranty_claim: apiRepair.warrantyStatus !== null && apiRepair.warrantyStatus !== undefined,
+  warranty_result: apiRepair.warrantyStatus as WarrantyResult | undefined,
+  created_at: new Date(apiRepair.receivedAt || apiRepair.createdAt),
+  updated_at: new Date(apiRepair.updatedAt),
+  completed_at: apiRepair.deliveredAt ? new Date(apiRepair.deliveredAt) : undefined,
+});
 
 interface RepairContextType {
   repairRecords: RepairRecord[];
-  createRepairRequest: (data: Omit<RepairRecord, 'id' | 'tracking_code' | 'status' | 'created_at' | 'updated_at' | 'assigned_technician' | 'assigned_technician_id' | 'outsourced_to_partner_id' | 'statusHistory'>) => RepairRecord;
+  isLoading: boolean;
+  error: string | null;
+  createRepairRequest: (data: Omit<RepairRecord, 'id' | 'tracking_code' | 'status' | 'created_at' | 'updated_at' | 'assigned_technician' | 'assigned_technician_id' | 'outsourced_to_partner_id' | 'statusHistory'>) => Promise<RepairRecord>;
   createRepairFromAdmin: (data: {
     customer_name: string;
     customer_phone: string;
@@ -15,13 +115,13 @@ interface RepairContextType {
     serial_number?: string;
     issue_description: string;
     estimated_cost_tl?: number;
-  }) => RepairRecord;
-  checkStatus: (trackingCode: string, phoneNumber: string) => RepairRecord | null;
-  updateRepairStatus: (trackingCode: string, newStatus: RepairStatus, note?: string) => void;
+  }) => Promise<RepairRecord>;
+  checkStatus: (trackingCode: string, phoneNumber: string) => Promise<RepairRecord | null>;
+  updateRepairStatus: (trackingCode: string, newStatus: RepairStatus, note?: string) => Promise<void>;
   getFilteredRepairs: (filters: RepairFilters) => RepairRecord[];
   
   // ERP Features
-  assignTechnician: (trackingCode: string, technicianId: string) => void;
+  assignTechnician: (trackingCode: string, technicianId: string) => Promise<void>;
   sendToPartner: (trackingCode: string, partnerId: string, estimatedCost: number) => void;
   
   // RMA / Warranty Features
@@ -29,49 +129,76 @@ interface RepairContextType {
   concludeWarranty: (trackingCode: string, result: WarrantyResult, notes: string, swapSerial?: string) => void;
 
   generateServiceLabel: (record: RepairRecord) => void;
+  refreshRepairs: () => Promise<void>;
 }
 
 const RepairContext = createContext<RepairContextType | undefined>(undefined);
 
-// Add statusHistory to mock data
-const enhancedMockRepairs: RepairRecord[] = mockRepairRecords.map(r => ({
-  ...r,
-  statusHistory: [
-    { status: RepairStatus.RECEIVED, timestamp: r.created_at, note: 'Cihaz teslim alındı' }
-  ]
-}));
-
 export const RepairProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [repairRecords, setRepairRecords] = useState<RepairRecord[]>(enhancedMockRepairs);
+  const [repairRecords, setRepairRecords] = useState<RepairRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
-  const generateTrackingCode = (): string => {
-    const year = new Date().getFullYear();
-    const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `NB-${year}-${randomPart}`;
-  };
+  // Servis kayıtlarını yükle
+  const refreshRepairs = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await repairsAPI.getAll({ limit: 100 });
+      
+      if (response.success && response.data?.repairs) {
+        const mappedRepairs = response.data.repairs.map(mapAPIRepairToRepairRecord);
+        setRepairRecords(mappedRepairs);
+      }
+    } catch (err) {
+      console.error('Failed to fetch repairs:', err);
+      setError('Servis kayıtları yüklenemedi');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // User değiştiğinde kayıtları yükle
+  useEffect(() => {
+    if (user) {
+      refreshRepairs();
+    }
+  }, [user, refreshRepairs]);
 
   /**
    * Müşteri tarafından servis talebi oluşturma
    */
-  const createRepairRequest = (data: any): RepairRecord => {
-    const newRecord: RepairRecord = {
-      ...data,
-      id: `rep_${Date.now()}`,
-      tracking_code: generateTrackingCode(),
-      status: RepairStatus.RECEIVED,
-      statusHistory: [{ status: RepairStatus.RECEIVED, timestamp: new Date(), note: 'Servis talebi oluşturuldu' }],
-      created_at: new Date(),
-      updated_at: new Date(),
-    };
-
-    setRepairRecords(prev => [newRecord, ...prev]);
-    return newRecord;
+  const createRepairRequest = async (data: any): Promise<RepairRecord> => {
+    try {
+      const response = await repairsAPI.create({
+        customerName: data.customer_name,
+        customerPhone: data.customer_phone,
+        customerEmail: data.customer_email,
+        deviceBrand: data.device_brand || 'Unknown',
+        deviceModel: data.device_model,
+        serialNumber: data.serial_number,
+        issueDescription: data.issue_description,
+      });
+      
+      if (response.success && response.data) {
+        const newRecord = mapAPIRepairToRepairRecord(response.data);
+        setRepairRecords(prev => [newRecord, ...prev]);
+        return newRecord;
+      }
+      
+      throw new Error('Servis kaydı oluşturulamadı');
+    } catch (err) {
+      console.error('Failed to create repair:', err);
+      throw err;
+    }
   };
 
   /**
    * Admin tarafından servis kaydı oluşturma
    */
-  const createRepairFromAdmin = (data: {
+  const createRepairFromAdmin = async (data: {
     customer_name: string;
     customer_phone: string;
     customer_email?: string;
@@ -80,59 +207,100 @@ export const RepairProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     serial_number?: string;
     issue_description: string;
     estimated_cost_tl?: number;
-  }): RepairRecord => {
-    const newRecord: RepairRecord = {
-      id: `rep_${Date.now()}`,
-      tracking_code: generateTrackingCode(),
-      customer_name: data.customer_name,
-      customer_phone: data.customer_phone,
-      customer_email: data.customer_email,
-      device_brand: data.device_brand,
-      device_model: data.device_model,
-      serial_number: data.serial_number,
-      issue_description: data.issue_description,
-      estimated_cost_tl: data.estimated_cost_tl,
-      status: RepairStatus.RECEIVED,
-      statusHistory: [{ status: RepairStatus.RECEIVED, timestamp: new Date(), note: 'Admin tarafından kayıt oluşturuldu' }],
-      created_at: new Date(),
-      updated_at: new Date(),
-    };
-
-    setRepairRecords(prev => [newRecord, ...prev]);
-    return newRecord;
+  }): Promise<RepairRecord> => {
+    try {
+      const response = await repairsAPI.create({
+        customerName: data.customer_name,
+        customerPhone: data.customer_phone,
+        customerEmail: data.customer_email,
+        deviceBrand: data.device_brand,
+        deviceModel: data.device_model,
+        serialNumber: data.serial_number,
+        issueDescription: data.issue_description,
+      });
+      
+      if (response.success && response.data) {
+        const newRecord = mapAPIRepairToRepairRecord(response.data);
+        setRepairRecords(prev => [newRecord, ...prev]);
+        return newRecord;
+      }
+      
+      throw new Error('Servis kaydı oluşturulamadı');
+    } catch (err) {
+      console.error('Failed to create repair:', err);
+      throw err;
+    }
   };
 
-  const checkStatus = (trackingCode: string, phoneNumber: string): RepairRecord | null => {
-    const code = trackingCode.trim();
-    const phone = phoneNumber.replace(/\D/g, '');
-    return repairRecords.find(record => {
-      const recordPhone = record.customer_phone.replace(/\D/g, '');
-      return record.tracking_code === code && recordPhone === phone;
-    }) || null;
+  /**
+   * Takip kodu ile sorgulama (Public API)
+   */
+  const checkStatus = async (trackingCode: string, phoneNumber: string): Promise<RepairRecord | null> => {
+    try {
+      const response = await repairsAPI.track(trackingCode.trim());
+      
+      if (response.success && response.data) {
+        const record = mapAPIRepairToRepairRecord(response.data);
+        
+        // Telefon numarası doğrulaması
+        const phone = phoneNumber.replace(/\D/g, '');
+        const recordPhone = record.customer_phone.replace(/\D/g, '');
+        
+        if (recordPhone.includes(phone) || phone.includes(recordPhone.slice(-10))) {
+          return record;
+        }
+        return null;
+      }
+      
+      return null;
+    } catch {
+      // Yerel kayıtlarda ara
+      const code = trackingCode.trim();
+      const phone = phoneNumber.replace(/\D/g, '');
+      return repairRecords.find(record => {
+        const recordPhone = record.customer_phone.replace(/\D/g, '');
+        return record.tracking_code === code && recordPhone === phone;
+      }) || null;
+    }
   };
 
   /**
    * Durum güncelleme + history ekleme
    */
-  const updateRepairStatus = (trackingCode: string, newStatus: RepairStatus, note?: string) => {
-    setRepairRecords(prev => prev.map(record => {
-      if (record.tracking_code !== trackingCode) return record;
-      
-      const historyEntry: StatusHistoryEntry = {
-        status: newStatus,
-        timestamp: new Date(),
-        note: note || `Durum güncellendi: ${newStatus}`
-      };
+  const updateRepairStatus = async (trackingCode: string, newStatus: RepairStatus, note?: string) => {
+    const record = repairRecords.find(r => r.tracking_code === trackingCode);
+    if (!record) return;
 
-      const currentHistory = record.statusHistory || [];
+    try {
+      const response = await repairsAPI.updateStatus(record.id, {
+        status: mapRepairStatusToAPIStatus(newStatus),
+        note,
+      });
       
-      return {
-        ...record,
-        status: newStatus,
-        statusHistory: [...currentHistory, historyEntry],
-        updated_at: new Date()
-      };
-    }));
+      if (response.success) {
+        setRepairRecords(prev => prev.map(r => {
+          if (r.tracking_code !== trackingCode) return r;
+          
+          const historyEntry: StatusHistoryEntry = {
+            status: newStatus,
+            timestamp: new Date(),
+            note: note || `Durum güncellendi: ${newStatus}`
+          };
+
+          const currentHistory = r.statusHistory || [];
+          
+          return {
+            ...r,
+            status: newStatus,
+            statusHistory: [...currentHistory, historyEntry],
+            updated_at: new Date()
+          };
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to update repair status:', err);
+      throw err;
+    }
   };
 
   /**
@@ -171,28 +339,45 @@ export const RepairProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
   };
 
-  const assignTechnician = (trackingCode: string, technicianName: string) => {
-    setRepairRecords(prev => prev.map(record => {
-      if (record.tracking_code !== trackingCode) return record;
+  const assignTechnician = async (trackingCode: string, technicianId: string) => {
+    const record = repairRecords.find(r => r.tracking_code === trackingCode);
+    if (!record) return;
 
-      const historyEntry: StatusHistoryEntry = {
-        status: record.status === RepairStatus.RECEIVED ? RepairStatus.DIAGNOSING : record.status,
-        timestamp: new Date(),
-        note: `Teknisyen atandı: ${technicianName}`
-      };
+    try {
+      const response = await repairsAPI.updateStatus(record.id, {
+        status: 'DIAGNOSING',
+        technicianId,
+        note: `Teknisyen atandı`,
+      });
+      
+      if (response.success) {
+        setRepairRecords(prev => prev.map(r => {
+          if (r.tracking_code !== trackingCode) return r;
 
-      const currentHistory = record.statusHistory || [];
+          const historyEntry: StatusHistoryEntry = {
+            status: RepairStatus.DIAGNOSING,
+            timestamp: new Date(),
+            note: `Teknisyen atandı`
+          };
 
-      return {
-        ...record,
-        assigned_technician: technicianName,
-        updated_at: new Date(),
-        status: record.status === RepairStatus.RECEIVED ? RepairStatus.DIAGNOSING : record.status,
-        statusHistory: [...currentHistory, historyEntry]
-      };
-    }));
+          const currentHistory = r.statusHistory || [];
+
+          return {
+            ...r,
+            assigned_technician_id: technicianId,
+            updated_at: new Date(),
+            status: r.status === RepairStatus.RECEIVED ? RepairStatus.DIAGNOSING : r.status,
+            statusHistory: [...currentHistory, historyEntry]
+          };
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to assign technician:', err);
+      throw err;
+    }
   };
 
+  // Local-only işlemler (API desteği yok henüz)
   const sendToPartner = (trackingCode: string, partnerId: string, estimatedCost: number) => {
     setRepairRecords(prev => prev.map(record => {
       if (record.tracking_code !== trackingCode) return record;
@@ -327,6 +512,8 @@ export const RepairProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   return (
     <RepairContext.Provider value={{
       repairRecords,
+      isLoading,
+      error,
       createRepairRequest,
       createRepairFromAdmin,
       checkStatus,
@@ -336,7 +523,8 @@ export const RepairProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       sendToPartner,
       sendToWarranty,
       concludeWarranty,
-      generateServiceLabel
+      generateServiceLabel,
+      refreshRepairs,
     }}>
       {children}
     </RepairContext.Provider>
