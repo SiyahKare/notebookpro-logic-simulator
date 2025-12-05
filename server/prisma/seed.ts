@@ -1,10 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, UserRole, ProductCategory, CouponType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('🌱 Seeding PostgreSQL database...');
 
   // Create admin user
   const adminPassword = await bcrypt.hash('admin123', 12);
@@ -16,7 +16,7 @@ async function main() {
       password: adminPassword,
       name: 'System Admin',
       phone: '905551112233',
-      role: 'ADMIN',
+      role: UserRole.ADMIN,
       isApproved: true,
       isActive: true
     }
@@ -33,7 +33,7 @@ async function main() {
       password: techPassword,
       name: 'Ahmet Usta',
       phone: '905552223344',
-      role: 'TECHNICIAN',
+      role: UserRole.TECHNICIAN,
       isApproved: true,
       isActive: true
     }
@@ -50,7 +50,7 @@ async function main() {
       password: dealerPassword,
       name: 'Ege Bilgisayar',
       phone: '902324445566',
-      role: 'DEALER',
+      role: UserRole.DEALER,
       isApproved: true,
       isActive: true,
       companyTitle: 'Ege Bilgisayar Ltd. Şti.',
@@ -70,7 +70,7 @@ async function main() {
       password: customerPassword,
       name: 'Ali Yılmaz',
       phone: '905559998877',
-      role: 'CUSTOMER',
+      role: UserRole.CUSTOMER,
       isApproved: true,
       isActive: true
     }
@@ -82,7 +82,7 @@ async function main() {
     {
       sku: 'SCR-156-SLIM-30',
       name: '15.6" Slim 30-Pin LED Screen (IPS)',
-      category: 'SCREEN',
+      category: ProductCategory.SCREEN,
       priceUsd: 68.00,
       stock: 45,
       criticalLimit: 5,
@@ -95,7 +95,7 @@ async function main() {
     {
       sku: 'BAT-DELL-60W',
       name: 'Dell 60Wh 4-Cell Battery (Type F3YGT)',
-      category: 'BATTERY',
+      category: ProductCategory.BATTERY,
       priceUsd: 35.50,
       stock: 3,
       criticalLimit: 5,
@@ -108,7 +108,7 @@ async function main() {
     {
       sku: 'KB-HP-15-TR',
       name: 'HP Pavilion 15-cb TR Keyboard Backlit',
-      category: 'KEYBOARD',
+      category: ProductCategory.KEYBOARD,
       priceUsd: 18.25,
       stock: 120,
       criticalLimit: 10,
@@ -119,9 +119,22 @@ async function main() {
       compatibleModels: ['HP Pavilion 15-cb', 'HP Pavilion 15-ck']
     },
     {
+      sku: 'CHP-SR40B',
+      name: 'Intel SR40B (i7-8750H) BGA Chipset',
+      category: ProductCategory.CHIPSET,
+      priceUsd: 145.00,
+      stock: 8,
+      criticalLimit: 2,
+      dealerDiscountPercent: 5,
+      shelfLocation: 'KASA-01',
+      imageUrl: 'https://images.pexels.com/photos/2582937/pexels-photo-2582937.jpeg?auto=compress&cs=tinysrgb&w=400',
+      description: 'Intel Coffee Lake, 6 çekirdek, 12 thread',
+      compatibleModels: ['MSI GL63', 'Asus FX504', 'Monster Tulpar T7']
+    },
+    {
       sku: 'RAM-DDR4-8GB',
       name: 'Samsung 8GB DDR4 2666MHz SODIMM',
-      category: 'RAM',
+      category: ProductCategory.RAM,
       priceUsd: 22.00,
       stock: 150,
       criticalLimit: 15,
@@ -132,9 +145,22 @@ async function main() {
       compatibleModels: ['Universal DDR4 Slot']
     },
     {
+      sku: 'RAM-DDR4-16GB',
+      name: 'Kingston 16GB DDR4 3200MHz SODIMM',
+      category: ProductCategory.RAM,
+      priceUsd: 38.00,
+      stock: 85,
+      criticalLimit: 10,
+      dealerDiscountPercent: 10,
+      shelfLocation: 'D-01-06',
+      imageUrl: 'https://images.pexels.com/photos/4792729/pexels-photo-4792729.jpeg?auto=compress&cs=tinysrgb&w=400',
+      description: 'DDR4 3200MHz XMP, Gaming RAM',
+      compatibleModels: ['Universal DDR4 Slot', 'ASUS ROG', 'MSI Gaming']
+    },
+    {
       sku: 'SSD-NVME-512',
       name: 'Samsung PM991 512GB NVMe SSD',
-      category: 'STORAGE',
+      category: ProductCategory.STORAGE,
       priceUsd: 42.00,
       stock: 200,
       criticalLimit: 20,
@@ -143,42 +169,108 @@ async function main() {
       imageUrl: 'https://images.pexels.com/photos/4316/technology-computer-chips-gigabyte.jpg?auto=compress&cs=tinysrgb&w=400',
       description: 'PCIe 3.0 x4 NVMe, 2400MB/s okuma',
       compatibleModels: ['Universal M.2 Slot']
+    },
+    {
+      sku: 'SSD-NVME-1TB',
+      name: 'Samsung PM9A1 1TB NVMe SSD (Gen4)',
+      category: ProductCategory.STORAGE,
+      priceUsd: 72.00,
+      stock: 55,
+      criticalLimit: 10,
+      dealerDiscountPercent: 8,
+      shelfLocation: 'A-08-06',
+      imageUrl: 'https://images.pexels.com/photos/4792733/pexels-photo-4792733.jpeg?auto=compress&cs=tinysrgb&w=400',
+      description: 'PCIe 4.0 x4, 7000MB/s okuma, 5200MB/s yazma',
+      compatibleModels: ['Universal M.2 Slot', 'Gen4 NVMe Support Required']
+    },
+    {
+      sku: 'MB-HP-840G5',
+      name: 'HP EliteBook 840 G5 Anakart (i5-8350U)',
+      category: ProductCategory.MOTHERBOARD,
+      priceUsd: 185.00,
+      stock: 6,
+      criticalLimit: 2,
+      dealerDiscountPercent: 5,
+      shelfLocation: 'E-03-02',
+      imageUrl: 'https://images.pexels.com/photos/163125/board-motherboard-chip-hardware-163125.jpeg?auto=compress&cs=tinysrgb&w=400',
+      description: 'HP EliteBook 840 G5 orijinal anakart',
+      compatibleModels: ['HP EliteBook 840 G5', 'HP EliteBook 850 G5']
+    },
+    {
+      sku: 'SCR-140-FHD-40',
+      name: '14.0" FHD 40-Pin LED Screen (IPS, 120Hz)',
+      category: ProductCategory.SCREEN,
+      priceUsd: 85.00,
+      stock: 25,
+      criticalLimit: 5,
+      dealerDiscountPercent: 10,
+      shelfLocation: 'A-12-08',
+      imageUrl: 'https://images.pexels.com/photos/1029757/pexels-photo-1029757.jpeg?auto=compress&cs=tinysrgb&w=400',
+      description: '14 inç Full HD IPS panel, 120Hz',
+      compatibleModels: ['Lenovo ThinkPad T480', 'Dell Latitude 7480']
     }
   ];
 
   for (const productData of products) {
     const { compatibleModels, ...data } = productData;
-    const product = await prisma.product.upsert({
-      where: { sku: data.sku },
-      update: {},
-      create: {
-        ...data,
-        compatibleModels: {
-          create: compatibleModels.map(model => ({ modelName: model }))
+    
+    // Check if product exists
+    const existing = await prisma.product.findUnique({ where: { sku: data.sku } });
+    
+    if (!existing) {
+      const product = await prisma.product.create({
+        data: {
+          ...data,
+          compatibleModels: {
+            create: compatibleModels.map(model => ({ modelName: model }))
+          }
         }
-      }
-    });
-    console.log('✅ Product created:', product.sku);
+      });
+      console.log('✅ Product created:', product.sku);
+    } else {
+      console.log('⏭️ Product exists:', data.sku);
+    }
   }
 
   // Create coupons
   const coupons = [
     {
       code: 'HOSGELDIN10',
-      type: 'PERCENTAGE',
+      type: CouponType.PERCENTAGE,
       value: 10,
       minPurchase: 500,
       maxDiscount: 200,
       validUntil: new Date('2025-12-31'),
-      description: 'İlk siparişinize %10 indirim'
+      description: 'İlk siparişinize %10 indirim',
+      categories: ['SCREEN', 'BATTERY', 'KEYBOARD']
     },
     {
       code: 'YILBASI100',
-      type: 'FIXED',
+      type: CouponType.FIXED,
       value: 100,
       minPurchase: 1000,
       validUntil: new Date('2025-01-15'),
-      description: 'Yılbaşına özel 100₺ indirim'
+      description: 'Yılbaşına özel 100₺ indirim',
+      categories: []
+    },
+    {
+      code: 'EKRAN15',
+      type: CouponType.PERCENTAGE,
+      value: 15,
+      maxDiscount: 500,
+      validUntil: new Date('2025-06-30'),
+      description: 'Ekran ürünlerinde %15 indirim',
+      categories: ['SCREEN']
+    },
+    {
+      code: 'VIP20',
+      type: CouponType.PERCENTAGE,
+      value: 20,
+      minPurchase: 2000,
+      maxDiscount: 1000,
+      validUntil: new Date('2025-12-31'),
+      description: 'VIP müşterilere özel %20 indirim',
+      categories: []
     }
   ];
 
@@ -199,7 +291,10 @@ async function main() {
     { key: 'gift_wrap_price', value: '25', type: 'number' },
     { key: 'company_name', value: 'NotebookPro', type: 'string' },
     { key: 'company_phone', value: '+90 212 123 45 67', type: 'string' },
-    { key: 'company_email', value: 'info@notebookpro.com', type: 'string' }
+    { key: 'company_email', value: 'info@notebookpro.com', type: 'string' },
+    { key: 'company_address', value: 'Perpa Ticaret Merkezi, A Blok Kat: 11, Şişli/İstanbul', type: 'string' },
+    { key: 'vat_rate', value: '0.20', type: 'number' },
+    { key: 'maintenance_mode', value: 'false', type: 'boolean' }
   ];
 
   for (const setting of settings) {
@@ -211,7 +306,33 @@ async function main() {
   }
   console.log('✅ Settings created');
 
-  console.log('🎉 Seeding completed!');
+  // Create sample address for customer
+  await prisma.address.upsert({
+    where: { id: 'default-address-1' },
+    update: {},
+    create: {
+      id: 'default-address-1',
+      userId: customer.id,
+      title: 'Ev',
+      fullName: 'Ali Yılmaz',
+      phone: '905559998877',
+      city: 'İstanbul',
+      district: 'Kadıköy',
+      address: 'Caferağa Mah. Moda Cad. No:15 D:3',
+      postalCode: '34710',
+      isDefault: true
+    }
+  });
+  console.log('✅ Sample address created');
+
+  console.log('');
+  console.log('🎉 PostgreSQL seeding completed!');
+  console.log('');
+  console.log('📊 Database Summary:');
+  console.log(`   - Users: ${await prisma.user.count()}`);
+  console.log(`   - Products: ${await prisma.product.count()}`);
+  console.log(`   - Coupons: ${await prisma.coupon.count()}`);
+  console.log(`   - Settings: ${await prisma.setting.count()}`);
 }
 
 main()
@@ -222,4 +343,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

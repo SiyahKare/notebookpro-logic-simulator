@@ -1,20 +1,18 @@
 // Prisma Schema for NotebookPro
-// Using SQLite for development
+// PostgreSQL Database
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = "postgresql://onur@localhost:5432/notebookpro?schema=public"
 }
 
-// NOTE: SQLite doesn't support enums, using String fields
-// Valid UserRole values: ADMIN, TECHNICIAN, DEALER, CUSTOMER
-// Valid ProductCategory: SCREEN, BATTERY, KEYBOARD, CHIPSET, RAM, STORAGE, MOTHERBOARD
-// Valid OrderStatus: PENDING, CONFIRMED, PREPARING, SHIPPED, DELIVERED, CANCELLED, REFUNDED
-// Valid RepairStatus: RECEIVED, DIAGNOSING, WAITING_PARTS, WAITING_APPROVAL, IN_REPAIR, QUALITY_CHECK, READY, DELIVERED, CANCELLED
+// =====================
+// USER & AUTHENTICATION
+// =====================
 
 model User {
   id            String    @id @default(uuid())
@@ -22,16 +20,21 @@ model User {
   password      String
   name          String
   phone         String?
-  role          String    @default("CUSTOMER")
+  role          UserRole  @default(CUSTOMER)
   isApproved    Boolean   @default(false)
   isActive      Boolean   @default(true)
+  
+  // Company details for B2B
   companyTitle  String?
   taxOffice     String?
   taxNumber     String?
+  
+  // Timestamps
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   lastLoginAt   DateTime?
   
+  // Relations
   orders        Order[]
   repairs       Repair[]
   reviews       Review[]
@@ -53,6 +56,7 @@ model RefreshToken {
   createdAt DateTime @default(now())
   
   @@index([userId])
+  @@index([token])
 }
 
 model Address {
@@ -75,32 +79,45 @@ model Address {
   @@index([userId])
 }
 
+enum UserRole {
+  ADMIN
+  TECHNICIAN
+  DEALER
+  CUSTOMER
+}
+
+// =====================
+// PRODUCTS
+// =====================
+
 model Product {
-  id                    String   @id @default(uuid())
-  sku                   String   @unique
+  id                    String          @id @default(uuid())
+  sku                   String          @unique
   name                  String
   description           String?
-  category              String
+  category              ProductCategory
   priceUsd              Float
-  vatRate               Float    @default(0.20)
-  stock                 Int      @default(0)
-  criticalLimit         Int      @default(5)
-  dealerDiscountPercent Float    @default(0)
+  vatRate               Float           @default(0.20)
+  stock                 Int             @default(0)
+  criticalLimit         Int             @default(5)
+  dealerDiscountPercent Float           @default(0)
   shelfLocation         String?
   imageUrl              String?
-  isActive              Boolean  @default(true)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  isActive              Boolean         @default(true)
   
-  compatibleModels CompatibleModel[]
-  reviews          Review[]
-  orderItems       OrderItem[]
-  repairParts      RepairPart[]
-  stockMovements   StockMovement[]
-  favorites        Favorite[]
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  
+  compatibleModels      CompatibleModel[]
+  reviews               Review[]
+  orderItems            OrderItem[]
+  repairParts           RepairPart[]
+  stockMovements        StockMovement[]
+  favorites             Favorite[]
   
   @@index([sku])
   @@index([category])
+  @@index([isActive])
 }
 
 model CompatibleModel {
@@ -110,19 +127,21 @@ model CompatibleModel {
   modelName String
   
   @@index([productId])
+  @@index([modelName])
 }
 
 model StockMovement {
-  id          String   @id @default(uuid())
+  id          String        @id @default(uuid())
   productId   String
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  type        String   // IN, OUT, ADJUSTMENT
+  product     Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type        StockMoveType
   quantity    Int
   reason      String?
   performedBy String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime      @default(now())
   
   @@index([productId])
+  @@index([createdAt])
 }
 
 model Review {
@@ -131,13 +150,14 @@ model Review {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rating    Int
+  rating    Int      // 1-5
   comment   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
   @@unique([productId, userId])
   @@index([productId])
+  @@index([userId])
 }
 
 model Favorite {
@@ -152,101 +172,160 @@ model Favorite {
   @@index([userId])
 }
 
+enum ProductCategory {
+  SCREEN
+  BATTERY
+  KEYBOARD
+  CHIPSET
+  RAM
+  STORAGE
+  MOTHERBOARD
+}
+
+enum StockMoveType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+// =====================
+// ORDERS
+// =====================
+
 model Order {
-  id             String    @id @default(uuid())
-  orderNumber    String    @unique
-  userId         String
-  user           User      @relation(fields: [userId], references: [id])
-  addressId      String?
-  address        Address?  @relation(fields: [addressId], references: [id])
-  status         String    @default("PENDING")
-  subtotal       Float
-  vatAmount      Float
-  discount       Float     @default(0)
-  shippingCost   Float     @default(0)
-  totalAmount    Float
-  couponCode     String?
-  couponDiscount Float     @default(0)
-  isGiftWrapped  Boolean   @default(false)
-  giftMessage    String?
-  paymentMethod  String?
-  paymentStatus  String    @default("PENDING")
-  trackingNumber String?
-  carrier        String?
-  shippedAt      DateTime?
-  deliveredAt    DateTime?
-  customerNote   String?
-  adminNote      String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id              String        @id @default(uuid())
+  orderNumber     String        @unique
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  addressId       String?
+  address         Address?      @relation(fields: [addressId], references: [id])
+  status          OrderStatus   @default(PENDING)
   
-  items         OrderItem[]
-  statusHistory OrderStatusHistory[]
+  subtotal        Float
+  vatAmount       Float
+  discount        Float         @default(0)
+  shippingCost    Float         @default(0)
+  totalAmount     Float
+  
+  couponCode      String?
+  couponDiscount  Float         @default(0)
+  
+  isGiftWrapped   Boolean       @default(false)
+  giftMessage     String?
+  
+  paymentMethod   String?
+  paymentStatus   PaymentStatus @default(PENDING)
+  
+  trackingNumber  String?
+  carrier         String?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  
+  customerNote    String?
+  adminNote       String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  items           OrderItem[]
+  statusHistory   OrderStatusHistory[]
   
   @@index([userId])
   @@index([status])
+  @@index([createdAt])
   @@index([orderNumber])
 }
 
 model OrderItem {
-  id         String  @id @default(uuid())
-  orderId    String
-  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId  String
-  product    Product @relation(fields: [productId], references: [id])
-  quantity   Int
-  unitPrice  Float
-  totalPrice Float
+  id          String  @id @default(uuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  quantity    Int
+  unitPrice   Float
+  totalPrice  Float
   
   @@index([orderId])
+  @@index([productId])
 }
 
 model OrderStatusHistory {
-  id        String   @id @default(uuid())
+  id        String      @id @default(uuid())
   orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  status    String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
   note      String?
   createdBy String?
-  createdAt DateTime @default(now())
+  createdAt DateTime    @default(now())
   
   @@index([orderId])
 }
 
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// =====================
+// REPAIRS / SERVICE
+// =====================
+
 model Repair {
-  id               String    @id @default(uuid())
-  trackingCode     String    @unique
-  userId           String?
-  user             User?     @relation(fields: [userId], references: [id])
-  customerName     String
-  customerPhone    String
-  customerEmail    String?
-  deviceBrand      String
-  deviceModel      String
-  serialNumber     String?
-  issueDescription String
-  technicianNotes  String?
-  status           String    @default("RECEIVED")
-  priority         String    @default("NORMAL")
-  estimatedCost    Float?
-  finalCost        Float?
-  isPaid           Boolean   @default(false)
-  warrantyStatus   String?
-  warrantyNotes    String?
-  technicianId     String?
-  receivedAt       DateTime  @default(now())
-  diagnosedAt      DateTime?
-  repairedAt       DateTime?
-  deliveredAt      DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                String         @id @default(uuid())
+  trackingCode      String         @unique
+  userId            String?
+  user              User?          @relation(fields: [userId], references: [id])
   
-  parts         RepairPart[]
-  statusHistory RepairStatusHistory[]
+  customerName      String
+  customerPhone     String
+  customerEmail     String?
+  
+  deviceBrand       String
+  deviceModel       String
+  serialNumber      String?
+  
+  issueDescription  String
+  technicianNotes   String?
+  
+  status            RepairStatus   @default(RECEIVED)
+  priority          RepairPriority @default(NORMAL)
+  
+  estimatedCost     Float?
+  finalCost         Float?
+  isPaid            Boolean        @default(false)
+  
+  warrantyStatus    WarrantyStatus?
+  warrantyNotes     String?
+  
+  technicianId      String?
+  
+  receivedAt        DateTime       @default(now())
+  diagnosedAt       DateTime?
+  repairedAt        DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  parts             RepairPart[]
+  statusHistory     RepairStatusHistory[]
   
   @@index([trackingCode])
   @@index([userId])
   @@index([status])
+  @@index([customerPhone])
 }
 
 model RepairPart {
@@ -259,54 +338,109 @@ model RepairPart {
   unitPrice Float
   
   @@index([repairId])
+  @@index([productId])
 }
 
 model RepairStatusHistory {
-  id        String   @id @default(uuid())
+  id        String       @id @default(uuid())
   repairId  String
-  repair    Repair   @relation(fields: [repairId], references: [id], onDelete: Cascade)
-  status    String
+  repair    Repair       @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  status    RepairStatus
   note      String?
   createdBy String?
-  createdAt DateTime @default(now())
+  createdAt DateTime     @default(now())
   
   @@index([repairId])
 }
 
+enum RepairStatus {
+  RECEIVED
+  DIAGNOSING
+  WAITING_PARTS
+  WAITING_APPROVAL
+  IN_REPAIR
+  QUALITY_CHECK
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum RepairPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum WarrantyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SENT_TO_SUPPLIER
+  RETURNED
+}
+
+// =====================
+// NOTIFICATIONS
+// =====================
+
 model Notification {
-  id        String   @id @default(uuid())
+  id        String           @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String   // ORDER, REPAIR, STOCK, SYSTEM, PROMOTION
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
   title     String
   message   String
   link      String?
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
   
   @@index([userId])
   @@index([isRead])
+  @@index([createdAt])
 }
 
+enum NotificationType {
+  ORDER
+  REPAIR
+  STOCK
+  SYSTEM
+  PROMOTION
+}
+
+// =====================
+// COUPONS
+// =====================
+
 model Coupon {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  type        String   // PERCENTAGE, FIXED
-  value       Float
-  minPurchase Float?
-  maxDiscount Float?
-  usageLimit  Int?
-  usedCount   Int      @default(0)
-  validFrom   DateTime @default(now())
-  validUntil  DateTime
-  isActive    Boolean  @default(true)
-  description String?
-  categories  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String     @id @default(uuid())
+  code          String     @unique
+  type          CouponType
+  value         Float
+  minPurchase   Float?
+  maxDiscount   Float?
+  usageLimit    Int?
+  usedCount     Int        @default(0)
+  validFrom     DateTime   @default(now())
+  validUntil    DateTime
+  isActive      Boolean    @default(true)
+  description   String?
+  categories    String[]   // PostgreSQL array support
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
   
   @@index([code])
+  @@index([isActive])
 }
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
+
+// =====================
+// SETTINGS
+// =====================
 
 model Setting {
   id        String   @id @default(uuid())

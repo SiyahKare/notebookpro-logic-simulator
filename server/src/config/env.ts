@@ -9,8 +9,8 @@ export const env = {
   PORT: parseInt(process.env.PORT || '5001', 10),
   NODE_ENV: process.env.NODE_ENV || 'development',
   
-  // Database
-  DATABASE_URL: process.env.DATABASE_URL || 'file:./dev.db',
+  // Database (PostgreSQL)
+  DATABASE_URL: process.env.DATABASE_URL || 'postgresql://onur@localhost:5432/notebookpro?schema=public',
   
   // JWT
   JWT_SECRET: process.env.JWT_SECRET || 'notebookpro-dev-secret-key-2024',
