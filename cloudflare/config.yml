@@ -11,8 +11,8 @@ ingress:
     originRequest:
       noTLSVerify: true
 
-  # Backend API - notebookpro-api.siyahkare.com
-  - hostname: notebookpro-api.siyahkare.com
+  # Backend API - api-notebookpro.siyahkare.com
+  - hostname: api-notebookpro.siyahkare.com
     service: http://localhost:5001
     originRequest:
       noTLSVerify: true

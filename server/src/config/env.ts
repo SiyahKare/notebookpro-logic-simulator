@@ -18,7 +18,8 @@ export const env = {
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
   
   // CORS - Multiple origins for dev and production
-  CORS_ORIGINS: (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:3001,http://localhost:3002,https://notebookpro.siyahkare.com').split(','),
+  CORS_ORIGINS: (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:4173,http://127.0.0.1:4173,https://notebookpro.siyahkare.com,https://api-notebookpro.siyahkare.com').split(','),
+
   
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
@@ -34,6 +35,11 @@ export const env = {
   SMTP_USER: process.env.SMTP_USER || '',
   SMTP_PASS: process.env.SMTP_PASS || '',
   SMTP_FROM: process.env.SMTP_FROM || 'noreply@notebookpro.com',
+  
+  // Iyzico Payment
+  IYZIPAY_API_KEY: process.env.IYZIPAY_API_KEY || 'sandbox-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+  IYZIPAY_SECRET_KEY: process.env.IYZIPAY_SECRET_KEY || 'sandbox-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+  IYZIPAY_URI: process.env.IYZIPAY_URI || 'https://sandbox-api.iyzipay.com',
   
   // Helpers
   isDev: process.env.NODE_ENV === 'development',

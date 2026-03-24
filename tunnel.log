@@ -1,0 +1,17 @@
+2026-03-24T19:46:40Z INF Starting tunnel tunnelID=22d1e42e-c483-4ecd-ab87-68b084d5905e
+2026-03-24T19:46:40Z INF Version 2026.3.0 (Checksum 99f099a3834e0b20ec2a18ac77d3d77261b77652310d97eca18fc1797d4349d0)
+2026-03-24T19:46:40Z INF GOOS: darwin, GOVersion: go1.26.1, GoArch: arm64
+2026-03-24T19:46:40Z INF Settings: map[config:cloudflare/config.yml cred-file:/Users/onurmutlu/.cloudflared/22d1e42e-c483-4ecd-ab87-68b084d5905e.json credentials-file:/Users/onurmutlu/.cloudflared/22d1e42e-c483-4ecd-ab87-68b084d5905e.json p:http2 protocol:http2]
+2026-03-24T19:46:40Z INF cloudflared will not automatically update if installed by a package manager.
+2026-03-24T19:46:40Z INF Generated Connector ID: 0a90cef0-4b88-4289-9d72-b8298da7643a
+2026-03-24T19:46:40Z INF Initial protocol http2
+2026-03-24T19:46:40Z INF ICMP proxy will use 192.168.1.3 as source for IPv4
+2026-03-24T19:46:40Z INF ICMP proxy will use fe80::1045:5dc7:627a:8254 in zone en0 as source for IPv6
+2026-03-24T19:46:40Z INF Created ICMP proxy listening on 192.168.1.3:0
+2026-03-24T19:46:40Z INF ICMP proxy will use 192.168.1.3 as source for IPv4
+2026-03-24T19:46:40Z INF ICMP proxy will use fe80::1045:5dc7:627a:8254 in zone en0 as source for IPv6
+2026-03-24T19:46:40Z INF Starting metrics server on 127.0.0.1:20241/metrics
+2026-03-24T19:46:40Z INF Registered tunnel connection connIndex=0 connection=1472c633-f6e0-4717-b5e8-ad28fbea0a1b event=0 ip=198.41.192.7 location=fra08 protocol=http2
+2026-03-24T19:46:41Z INF Registered tunnel connection connIndex=1 connection=0e9bf821-058c-4af1-a733-565a76e113ea event=0 ip=198.41.200.13 location=fra07 protocol=http2
+2026-03-24T19:46:42Z INF Registered tunnel connection connIndex=2 connection=12fe240a-6163-4570-8bc3-7cd18ab25f09 event=0 ip=198.41.200.233 location=fra15 protocol=http2
+2026-03-24T19:46:43Z INF Registered tunnel connection connIndex=3 connection=e538d338-b831-4918-801f-fec78622f701 event=0 ip=198.41.192.67 location=fra03 protocol=http2

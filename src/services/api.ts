@@ -3,7 +3,7 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
 // API Base URL - Production veya localhost
 const API_URL = import.meta.env.VITE_API_URL || 
   (window.location.hostname.includes('siyahkare.com') 
-    ? 'https://notebookpro-api.siyahkare.com/api'
+    ? 'https://api-notebookpro.siyahkare.com/api'
     : 'http://localhost:5001/api');
 
 // Token storage keys
@@ -497,6 +497,25 @@ export const uploadAPI = {
         'Content-Type': 'multipart/form-data',
       },
     });
+    return response.data;
+  },
+};
+
+// ========================
+// PAYMENT API
+// ========================
+export const paymentAPI = {
+  charge: async (data: {
+    cardHolderName: string;
+    cardNumber: string;
+    expireMonth: string;
+    expireYear: string;
+    cvc: string;
+    price: number;
+    buyerInfo?: any;
+    addressInfo?: any;
+  }) => {
+    const response = await api.post('/payment/charge', data);
     return response.data;
   },
 };

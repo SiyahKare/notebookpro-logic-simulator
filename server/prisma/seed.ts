@@ -208,6 +208,71 @@ async function main() {
       imageUrl: 'https://images.pexels.com/photos/1029757/pexels-photo-1029757.jpeg?auto=compress&cs=tinysrgb&w=400',
       description: '14 inç Full HD IPS panel, 120Hz',
       compatibleModels: ['Lenovo ThinkPad T480', 'Dell Latitude 7480']
+    },
+    {
+      sku: 'MAC-BAT-A2338',
+      name: 'Apple MacBook Pro M1/M2 (A2338) Batarya',
+      category: ProductCategory.BATTERY,
+      priceUsd: 115.00,
+      stock: 12,
+      criticalLimit: 3,
+      dealerDiscountPercent: 10,
+      shelfLocation: 'B-08-01',
+      imageUrl: 'https://images.pexels.com/photos/163100/circuit-circuit-board-resistor-computer-163100.jpeg?auto=compress&cs=tinysrgb&w=400',
+      description: 'Orijinal Apple A2338 Batarya (58.2Wh)',
+      compatibleModels: ['MacBook Pro M1 A2338', 'MacBook Pro M2 A2338']
+    },
+    {
+      sku: 'SSD-SATA-1TB',
+      name: 'Crucial BX500 1TB 3D NAND SATA 2.5-inch SSD',
+      category: ProductCategory.STORAGE,
+      priceUsd: 55.00,
+      stock: 80,
+      criticalLimit: 15,
+      dealerDiscountPercent: 12,
+      shelfLocation: 'A-02-05',
+      imageUrl: 'https://images.pexels.com/photos/4316/technology-computer-chips-gigabyte.jpg?auto=compress&cs=tinysrgb&w=400',
+      description: '540MB/s okuma, 500MB/s yazma SATA 3 SSD',
+      compatibleModels: ['Universal SATA 2.5" slot']
+    },
+    {
+      sku: 'KB-LEN-T480',
+      name: 'Lenovo ThinkPad T480 Arkadan Aydınlatmalı TR Klavye',
+      category: ProductCategory.KEYBOARD,
+      priceUsd: 45.00,
+      stock: 35,
+      criticalLimit: 5,
+      dealerDiscountPercent: 10,
+      shelfLocation: 'C-04-11',
+      imageUrl: 'https://images.pexels.com/photos/1772123/pexels-photo-1772123.jpeg?auto=compress&cs=tinysrgb&w=400',
+      description: 'ThinkPad T480 orijinal Türkçe Q klavye, Backlit',
+      compatibleModels: ['Lenovo ThinkPad T480', 'Lenovo ThinkPad T470']
+    },
+    {
+      sku: 'MAC-SCR-A2337',
+      name: 'Apple MacBook Air M1 (A2337) Komple Ekran (Uzay Grisi)',
+      category: ProductCategory.SCREEN,
+      priceUsd: 320.00,
+      stock: 5,
+      criticalLimit: 2,
+      dealerDiscountPercent: 5,
+      shelfLocation: 'A-15-02',
+      imageUrl: 'https://images.pexels.com/photos/1714208/pexels-photo-1714208.jpeg?auto=compress&cs=tinysrgb&w=400',
+      description: 'Orijinal MacBook Air M1 A2337 Retina LCD Ekran Kasa',
+      compatibleModels: ['MacBook Air M1 A2337']
+    },
+    {
+      sku: 'MB-DELL-XPS9300',
+      name: 'Dell XPS 13 (9300) Anakart (i7-1065G7, 16GB RAM)',
+      category: ProductCategory.MOTHERBOARD,
+      priceUsd: 450.00,
+      stock: 2,
+      criticalLimit: 1,
+      dealerDiscountPercent: 0,
+      shelfLocation: 'E-01-01',
+      imageUrl: 'https://images.pexels.com/photos/163125/board-motherboard-chip-hardware-163125.jpeg?auto=compress&cs=tinysrgb&w=400',
+      description: 'Orijinal Dell Anakart, 16GB LPDDR4x lehimli RAM',
+      compatibleModels: ['Dell XPS 13 9300']
     }
   ];
 

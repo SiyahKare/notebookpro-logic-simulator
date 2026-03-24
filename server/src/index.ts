@@ -17,6 +17,7 @@ import couponRoutes from './routes/coupon.routes.js';
 import settingRoutes from './routes/setting.routes.js';
 import emailRoutes from './routes/email.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
 
 const app: Express = express();
 
@@ -86,6 +87,7 @@ app.use('/api/coupons', couponRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Health check
 app.get('/api/health', (_req: Request, res: Response) => {

@@ -8,6 +8,7 @@ import { formatCurrency } from '../utils/pricing';
 import CreditCardVisual from '../components/CreditCardVisual';
 import { formatCardNumber, formatExpiry, isValidLuhn } from '../utils/payment';
 import SEO from '../components/SEO';
+import { paymentAPI } from '../services/api';
 
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
@@ -51,7 +52,7 @@ const Checkout: React.FC = () => {
     if (formatted.length <= 5) setExpiry(formatted);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAgreed) {
        setErrorMsg("Lütfen Satış Sözleşmesini onaylayınız.");
@@ -69,20 +70,45 @@ const Checkout: React.FC = () => {
     setIsProcessing(true);
     setErrorMsg(null);
 
-    // SIMULATION: Fake Bank Transaction
-    setTimeout(() => {
-      // %90 Success Rate Simulation
-      const isApproved = Math.random() > 0.10;
+    // Send payment to Iyzico
+    const expireParts = expiry.split('/');
+    const expMonth = expireParts[0];
+    const expYear = expireParts[1] ? (expireParts[1].length === 2 ? '20' + expireParts[1] : expireParts[1]) : '';
 
-      if (isApproved && user) {
-        placeOrder(cartItems, finalTotal, { userId: user.id, name: user.name });
-        clearCart();
+    try {
+      const response = await paymentAPI.charge({
+        cardHolderName: cardHolder,
+        cardNumber: cardNumber.replace(/\s+/g, ''),
+        expireMonth: expMonth,
+        expireYear: expYear,
+        cvc: cvv,
+        price: finalTotal,
+        buyerInfo: {
+          name: user?.name?.split(' ')[0] || 'Misafir',
+          surname: user?.name?.split(' ').slice(1).join(' ') || 'Kullanici',
+          email: user?.email || 'test@notebookpro.com'
+        },
+        addressInfo: {
+          address: address || 'Test Adres',
+          city: city || 'Istanbul'
+        }
+      });
+
+      if (response.success) {
+        // Create Order via Context
+        if (user) {
+          placeOrder(cartItems, finalTotal, { userId: user.id, name: user.name });
+          clearCart();
+        }
         setOrderSuccess(true);
       } else {
+        setErrorMsg("İşlem Başarısız: Iyzico ödeme reddi.");
         setIsProcessing(false);
-        setErrorMsg("İşlem Başarısız: Yetersiz Bakiye veya Banka Reddi (Simülasyon).");
       }
-    }, 2500);
+    } catch (err: any) {
+      setErrorMsg("İşlem Başarısız: " + (err.response?.data?.message || err.message || "Banka reddi veya geçersiz kart numarası"));
+      setIsProcessing(false);
+    }
   };
 
   if (orderSuccess) {
