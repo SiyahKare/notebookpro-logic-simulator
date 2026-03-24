@@ -1,13 +1,19 @@
 # Cloudflare Tunnel Yapılandırması
 # NotebookPro - notebookpro.siyahkare.com
 
-tunnel: 2b6f3c08-cca1-40f8-8659-8a11903f6b40
-credentials-file: /Users/onur/.cloudflared/2b6f3c08-cca1-40f8-8659-8a11903f6b40.json
+tunnel: 22d1e42e-c483-4ecd-ab87-68b084d5905e
+credentials-file: /Users/onurmutlu/.cloudflared/22d1e42e-c483-4ecd-ab87-68b084d5905e.json
 
 ingress:
   # Ana domain - notebookpro.siyahkare.com
   - hostname: notebookpro.siyahkare.com
     service: http://localhost:4173
+    originRequest:
+      noTLSVerify: true
+
+  # Backend API - notebookpro-api.siyahkare.com
+  - hostname: notebookpro-api.siyahkare.com
+    service: http://localhost:5001
     originRequest:
       noTLSVerify: true
   

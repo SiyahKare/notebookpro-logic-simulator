@@ -10,6 +10,7 @@ import { formatCurrency } from '../utils/pricing';
 import SEO from '../components/SEO';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
+import { usersAPI, settingsAPI } from '../services/api';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -2254,7 +2255,25 @@ const SettingsTab: React.FC<{
                   value={settings.customExchangeRate}
                   onChange={e => setSettings(prev => ({ ...prev, customExchangeRate: e.target.value }))}
                 />
-                <span className="px-4 py-3 bg-slate-100 rounded-xl text-slate-600 font-bold">₺</span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      showToast('TCMB\'den kurlar çekiliyor...', 'info');
+                      const res = await settingsAPI.getTcmbRate();
+                      if (res.success && res.data?.rate) {
+                        setSettings(prev => ({ ...prev, customExchangeRate: res.data.rate.toString() }));
+                        showToast(`Güncel Kur (${res.data.rate} ₺) başarıyla çekildi! Lütfen kaydedin.`, 'success');
+                      }
+                    } catch (error) {
+                      showToast('TCMB kur bilgisi alınamadı. İnternet veya sunucu kaynaklı sorun olabilir.', 'error');
+                    }
+                  }}
+                  className="px-4 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition whitespace-nowrap"
+                >
+                  TCMB'den Çek
+                </button>
+                <span className="px-4 py-3 bg-slate-100 rounded-xl text-slate-600 font-bold hidden sm:block">₺</span>
               </div>
               <p className="text-xs text-slate-400 mt-2">Tüm USD fiyatlar bu kurla TL'ye çevrilir</p>
             </div>

@@ -463,6 +463,11 @@ export const settingsAPI = {
     return response.data;
   },
   
+  getTcmbRate: async () => {
+    const response = await api.get('/settings/tcmb-rate');
+    return response.data;
+  },
+  
   get: async (key: string) => {
     const response = await api.get(`/settings/${key}`);
     return response.data;
@@ -475,6 +480,23 @@ export const settingsAPI = {
   
   bulkUpdate: async (settings: Array<{ key: string; value: string; type?: string }>) => {
     const response = await api.put('/settings', { settings });
+    return response.data;
+  },
+};
+
+// ========================
+// UPLOAD API
+// ========================
+export const uploadAPI = {
+  uploadProductImage: async (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const response = await api.post('/upload/product-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 };

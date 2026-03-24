@@ -117,7 +117,7 @@ interface RepairContextType {
     estimated_cost_tl?: number;
   }) => Promise<RepairRecord>;
   checkStatus: (trackingCode: string, phoneNumber: string) => Promise<RepairRecord | null>;
-  updateRepairStatus: (trackingCode: string, newStatus: RepairStatus, note?: string) => Promise<void>;
+  updateRepairStatus: (trackingCode: string, newStatus: RepairStatus, note?: string, estimatedCost?: number, finalCost?: number) => Promise<void>;
   getFilteredRepairs: (filters: RepairFilters) => RepairRecord[];
   
   // ERP Features
@@ -267,7 +267,7 @@ export const RepairProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   /**
    * Durum güncelleme + history ekleme
    */
-  const updateRepairStatus = async (trackingCode: string, newStatus: RepairStatus, note?: string) => {
+  const updateRepairStatus = async (trackingCode: string, newStatus: RepairStatus, note?: string, estimatedCost?: number, finalCost?: number) => {
     const record = repairRecords.find(r => r.tracking_code === trackingCode);
     if (!record) return;
 
@@ -275,6 +275,8 @@ export const RepairProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const response = await repairsAPI.updateStatus(record.id, {
         status: mapRepairStatusToAPIStatus(newStatus),
         note,
+        estimatedCost,
+        finalCost,
       });
       
       if (response.success) {
@@ -292,6 +294,8 @@ export const RepairProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           return {
             ...r,
             status: newStatus,
+            estimated_cost_tl: estimatedCost !== undefined ? estimatedCost : r.estimated_cost_tl,
+            price_to_customer: finalCost !== undefined ? finalCost : r.price_to_customer,
             statusHistory: [...currentHistory, historyEntry],
             updated_at: new Date()
           };

@@ -21,6 +21,24 @@ router.get('/', asyncHandler(async (_req: Request, res: Response) => {
   res.json({ success: true, data: settingsMap });
 }));
 
+// GET /api/settings/tcmb-rate
+router.get('/tcmb-rate', authenticate, asyncHandler(async (_req: Request, res: Response) => {
+  try {
+    const response = await fetch('https://www.tcmb.gov.tr/kurlar/today.xml');
+    if (!response.ok) throw new Error('TCMB servisine ulaşılamadı');
+    const xml = await response.text();
+    
+    const match = xml.match(/<Currency[^>]*Kod="USD"[^>]*>[\s\S]*?<ForexSelling>([\d.]+)<\/ForexSelling>/);
+    if (match && match[1]) {
+      res.json({ success: true, data: { rate: parseFloat(match[1]) } });
+    } else {
+      throw new Error('Kur bilgisi parse edilemedi');
+    }
+  } catch (error: any) {
+    throw new AppError('TCMB hatası: ' + error.message, 500);
+  }
+}));
+
 // GET /api/settings/:key
 router.get('/:key', asyncHandler(async (req: Request, res: Response) => {
   const setting = await prisma.setting.findUnique({ where: { key: req.params.key } });
