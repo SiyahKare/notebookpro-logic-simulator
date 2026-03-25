@@ -100,15 +100,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, matchedModel }) => {
         </div>
         
         {/* Dynamic Title Logic */}
-        <h3 className="text-slate-800 font-bold text-sm leading-tight mb-1 line-clamp-2 h-10" title={product.name}>
-          {matchedModel ? (
-             <span>
-               <span className="text-green-600">{matchedModel} Uyumlu</span> {product.name}
-             </span>
-          ) : (
-            product.name
-          )}
-        </h3>
+        <Link to={`/product/${product.id}`}>
+          <h3 className="text-slate-800 font-bold text-sm leading-tight mb-1 line-clamp-2 h-10 hover:text-red-600 transition-colors" title={product.name}>
+            {matchedModel ? (
+               <span>
+                 <span className="text-green-600">{matchedModel} Uyumlu</span> {product.name}
+               </span>
+            ) : (
+              product.name
+            )}
+          </h3>
+        </Link>
         
         {/* SKU Display for Warehouse/B2B */}
         <div className="mb-2">
