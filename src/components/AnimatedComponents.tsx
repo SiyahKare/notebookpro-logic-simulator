@@ -107,7 +107,7 @@ export const ScaleOnHover: React.FC<ScaleOnHoverProps> = ({
 }) => {
   return (
     <div 
-      className={`transition-transform duration-300 ease-out hover:scale-[${scale}] ${className}`}
+      className={`scale-on-hover ${className}`}
       style={{ '--hover-scale': scale } as React.CSSProperties}
     >
       {children}
@@ -475,4 +475,3 @@ export default {
   AnimatedProgress,
   FloatingActionButton
 };
-

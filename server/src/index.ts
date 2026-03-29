@@ -9,6 +9,7 @@ import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
 // Import routes
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
+import categoryRoutes from './routes/category.routes.js';
 import productRoutes from './routes/product.routes.js';
 import orderRoutes from './routes/order.routes.js';
 import repairRoutes from './routes/repair.routes.js';
@@ -20,38 +21,49 @@ import uploadRoutes from './routes/upload.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 
 const app: Express = express();
+const normalizeOrigin = (origin: string) => origin.trim().replace(/\/$/, '').toLowerCase();
+const allowedOrigins = new Set(env.CORS_ORIGINS.map(normalizeOrigin));
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, server-to-server, etc.)
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    const normalized = normalizeOrigin(origin);
+    if (env.isDev || allowedOrigins.has(normalized)) {
+      callback(null, true);
+      return;
+    }
+
+    console.warn(`⚠️ CORS blocked for origin: ${origin}`);
+    callback(new Error(`CORS not allowed for origin: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Set-Cookie'],
+  optionsSuccessStatus: 204,
+};
 
 // ===================
 // MIDDLEWARE SETUP
 // ===================
 
 // Security headers
-app.use(helmet());
-
-// CORS - Multiple origins support
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    
-    // Check if origin is allowed
-    if (env.CORS_ORIGINS.some(allowed => origin.includes(allowed.replace('https://', '').replace('http://', '')))) {
-      return callback(null, true);
-    }
-    
-    // In development, allow all origins
-    if (env.isDev) {
-      return callback(null, true);
-    }
-    
-    callback(new Error('CORS not allowed'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+// Security headers - Disable contentSecurityPolicy in development to avoid issues with inline scripts/styles if needed
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// Rate limiting
+// CORS - Multiple origins support
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// Rate limiting - Trust proxy for Cloudflare
+app.set('trust proxy', 1);
 const limiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
   max: env.RATE_LIMIT_MAX,
@@ -79,6 +91,7 @@ app.use('/uploads', express.static(env.UPLOAD_DIR));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/categories', categoryRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/repairs', repairRoutes);
@@ -107,6 +120,7 @@ app.get('/api', (_req: Request, res: Response) => {
     endpoints: {
       auth: '/api/auth',
       users: '/api/users',
+      categories: '/api/categories',
       products: '/api/products',
       orders: '/api/orders',
       repairs: '/api/repairs',
@@ -131,15 +145,14 @@ app.use(errorHandler);
 
 const PORT = env.PORT;
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log('='.repeat(50));
   console.log(`🚀 NotebookPro API Server`);
   console.log('='.repeat(50));
-  console.log(`📍 URL: http://localhost:${PORT}`);
+  console.log(`📍 URL: http://0.0.0.0:${PORT}`);
   console.log(`📍 Environment: ${env.NODE_ENV}`);
   console.log(`📍 API Docs: http://localhost:${PORT}/api`);
   console.log('='.repeat(50));
 });
 
 export default app;
-

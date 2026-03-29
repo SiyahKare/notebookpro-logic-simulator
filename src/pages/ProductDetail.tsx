@@ -55,10 +55,12 @@ const ProductDetail: React.FC = () => {
     : basePrice;
   const finalPrice = Math.floor(dealerPrice) + 0.90;
   const originalPrice = isDealer ? Math.floor(basePrice) + 0.90 : null;
+  const categorySlug = product.category?.slug || product.categoryId;
+  const categoryLabel = product.category?.name || product.categoryId;
 
   // Related products
   const relatedProducts = products
-    .filter(p => p.category === product.category && p.id !== product.id)
+    .filter(p => p.categoryId === product.categoryId && p.id !== product.id)
     .slice(0, 4);
 
   const handleAddToCart = () => {
@@ -93,10 +95,10 @@ const ProductDetail: React.FC = () => {
             </li>
             <li className={actualTheme === 'dark' ? 'text-slate-600' : 'text-slate-300'}>/</li>
             <li>
-              <Link to={`/products/${product.category}`} className={`hover:text-red-600 ${
+              <Link to={`/products/${categorySlug}`} className={`hover:text-red-600 ${
                 actualTheme === 'dark' ? 'text-slate-400' : 'text-slate-500'
               }`}>
-                {product.category.toUpperCase()}
+                {categoryLabel.toUpperCase()}
               </Link>
             </li>
             <li className={actualTheme === 'dark' ? 'text-slate-600' : 'text-slate-300'}>/</li>
@@ -134,7 +136,7 @@ const ProductDetail: React.FC = () => {
               <span className={`text-sm px-3 py-1 rounded-full ${
                 actualTheme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
               }`}>
-                {product.category.toUpperCase()}
+                {categoryLabel.toUpperCase()}
               </span>
               <span className={`text-sm font-mono ${
                 actualTheme === 'dark' ? 'text-slate-500' : 'text-slate-400'
@@ -402,4 +404,3 @@ const ProductDetail: React.FC = () => {
 };
 
 export default ProductDetail;
-

@@ -23,6 +23,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, matchedModel }) => {
   const isDealer = checkDealerAccess();
   const isOutOfStock = product.stock === 0;
   const productIsFavorite = isFavorite(product.id);
+  const categoryLabel = product.category?.name || product.categoryId || 'Diger';
 
   const handleAddToCart = () => {
     if (isOutOfStock) {
@@ -83,10 +84,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, matchedModel }) => {
         )}
       </div>
 
-      {/* Content */}
+        {/* Content */}
       <div className="p-5 flex-grow flex flex-col">
         <div className="flex justify-between items-center mb-1">
-           <span className="text-[10px] uppercase font-bold text-red-600 tracking-wider">{product.category}</span>
+           <span className="text-[10px] uppercase font-bold text-red-600 tracking-wider">{categoryLabel}</span>
            {/* Star Rating */}
            {rating > 0 && (
              <div className="flex items-center gap-1">

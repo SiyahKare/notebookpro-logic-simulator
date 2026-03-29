@@ -95,7 +95,10 @@ model Product {
   sku                   String          @unique
   name                  String
   description           String?
-  category              ProductCategory
+  categoryId            String
+  category              Category        @relation(fields: [categoryId], references: [id])
+  subCategoryId         String?
+  subCategory           SubCategory?    @relation(fields: [subCategoryId], references: [id])
   priceUsd              Float
   vatRate               Float           @default(0.20)
   stock                 Int             @default(0)
@@ -116,7 +119,8 @@ model Product {
   favorites             Favorite[]
   
   @@index([sku])
-  @@index([category])
+  @@index([categoryId])
+  @@index([subCategoryId])
   @@index([isActive])
 }
 
@@ -172,14 +176,32 @@ model Favorite {
   @@index([userId])
 }
 
-enum ProductCategory {
-  SCREEN
-  BATTERY
-  KEYBOARD
-  CHIPSET
-  RAM
-  STORAGE
-  MOTHERBOARD
+model Category {
+  id          String        @id @default(uuid())
+  name        String
+  slug        String        @unique
+  description String?
+  
+  subCategories SubCategory[]
+  products      Product[]
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model SubCategory {
+  id          String        @id @default(uuid())
+  name        String
+  slug        String        @unique
+  categoryId  String
+  category    Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  products    Product[]
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  @@unique([categoryId, name])
 }
 
 enum StockMoveType {

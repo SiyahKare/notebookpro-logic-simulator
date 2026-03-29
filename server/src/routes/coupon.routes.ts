@@ -62,7 +62,7 @@ router.post('/', authenticate, adminOnly, asyncHandler(async (req: Request, res:
       type, value, minPurchase, maxDiscount, usageLimit,
       validUntil: new Date(validUntil),
       description,
-      categories: categories ? JSON.stringify(categories) : null
+      categories: categories ? categories : undefined
     }
   });
 

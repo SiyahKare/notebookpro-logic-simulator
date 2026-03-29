@@ -1,21 +1,23 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useOrder } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { formatCurrency } from '../utils/pricing';
+import { useCurrency } from '../context/CurrencyContext';
+import { calculateProductPrice, formatCurrency } from '../utils/pricing';
 import CreditCardVisual from '../components/CreditCardVisual';
 import { formatCardNumber, formatExpiry, isValidLuhn } from '../utils/payment';
 import SEO from '../components/SEO';
 import { paymentAPI } from '../services/api';
+import { UserRole } from '../types';
 
 const Checkout: React.FC = () => {
-  const navigate = useNavigate();
   const { cartItems, calculateCartTotals, clearCart } = useCart();
   const { placeOrder } = useOrder();
-  const { user } = useAuth();
+  const { user, demoLogin } = useAuth();
   const { actualTheme } = useTheme();
+  const { exchangeRate } = useCurrency();
   const baseTotals = calculateCartTotals();
 
   // Form State
@@ -35,12 +37,23 @@ const Checkout: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Calculated Values
   const interestRate = installment === 1 ? 0 : (installment === 3 ? 0.05 : 0.10);
   const finalTotal = baseTotals.grandTotalTL * (1 + interestRate);
   const isLuhnValid = isValidLuhn(cardNumber);
   const showInstallments = cardNumber.replace(/\D/g, '').length >= 6;
+  const paymentItems = cartItems.map((item) => {
+    const lineTotal = calculateProductPrice(item.product, user, exchangeRate).finalPriceTL * item.quantity;
+
+    return {
+      id: item.product.id,
+      name: item.product.name,
+      price: Number((lineTotal * (1 + interestRate)).toFixed(2)),
+      quantity: item.quantity,
+    };
+  });
 
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCardNumber(e.target.value);
@@ -52,8 +65,48 @@ const Checkout: React.FC = () => {
     if (formatted.length <= 5) setExpiry(formatted);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleDemoCustomerLogin = async () => {
+    setIsLoggingIn(true);
+    setErrorMsg(null);
+
+    try {
+      await demoLogin(UserRole.CUSTOMER);
+    } catch (error) {
+      console.error('Demo login failed:', error);
+      setErrorMsg('Oturum başlatılamadı. Lütfen tekrar deneyin.');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
+    e?.preventDefault();
+
+    if (!cartItems.length) {
+      setErrorMsg('Sepetinizde ürün bulunmuyor.');
+      return;
+    }
+
+    if (!user) {
+      setErrorMsg('Ödeme için önce giriş yapmalısınız.');
+      return;
+    }
+
+    if (!cardHolder.trim()) {
+      setErrorMsg('Kart sahibi adı zorunludur.');
+      return;
+    }
+
+    if (!address.trim() || !city.trim()) {
+      setErrorMsg('Teslimat adresi ve şehir bilgisi zorunludur.');
+      return;
+    }
+
+    if (expiry.length !== 5 || !expiry.includes('/')) {
+      setErrorMsg('Son kullanma tarihi geçersiz.');
+      return;
+    }
+
     if (!isAgreed) {
        setErrorMsg("Lütfen Satış Sözleşmesini onaylayınız.");
        return;
@@ -83,23 +136,30 @@ const Checkout: React.FC = () => {
         expireYear: expYear,
         cvc: cvv,
         price: finalTotal,
+        installment,
+        items: paymentItems,
         buyerInfo: {
-          name: user?.name?.split(' ')[0] || 'Misafir',
-          surname: user?.name?.split(' ').slice(1).join(' ') || 'Kullanici',
-          email: user?.email || 'test@notebookpro.com'
+          name: user.name.split(' ')[0] || 'NotebookPro',
+          surname: user.name.split(' ').slice(1).join(' ') || 'Musteri',
+          email: user.email,
+          phone: user.phone,
         },
         addressInfo: {
-          address: address || 'Test Adres',
-          city: city || 'Istanbul'
+          address,
+          city,
         }
       });
 
       if (response.success) {
-        // Create Order via Context
-        if (user) {
-          placeOrder(cartItems, finalTotal, { userId: user.id, name: user.name });
-          clearCart();
-        }
+        await placeOrder(cartItems, {
+          userId: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          address: `${address}, ${city}`,
+          paymentMethod: `iyzico_${installment}x`,
+        });
+        clearCart();
         setOrderSuccess(true);
       } else {
         setErrorMsg("İşlem Başarısız: Iyzico ödeme reddi.");
@@ -110,6 +170,94 @@ const Checkout: React.FC = () => {
       setIsProcessing(false);
     }
   };
+
+  if (cartItems.length === 0) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center px-4 ${
+        actualTheme === 'dark' ? 'bg-slate-900' : 'bg-slate-50'
+      }`}>
+        <SEO title="Ödeme" />
+        <div className={`p-8 rounded-3xl shadow-xl max-w-md w-full text-center ${
+          actualTheme === 'dark' ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-100'
+        }`}>
+          <div className="text-5xl mb-4">🛒</div>
+          <h1 className={`text-2xl font-bold mb-2 ${actualTheme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+            Sepetiniz Boş
+          </h1>
+          <p className={`mb-6 ${actualTheme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+            Ödeme adımına geçmek için önce sepetinize ürün ekleyin.
+          </p>
+          <Link
+            to="/products"
+            className="inline-flex items-center justify-center w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition"
+          >
+            Ürünlere Dön
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center px-4 ${
+        actualTheme === 'dark' ? 'bg-slate-900' : 'bg-slate-50'
+      }`}>
+        <SEO title="Ödeme" />
+        <div className={`p-8 rounded-3xl shadow-xl max-w-lg w-full ${
+          actualTheme === 'dark' ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-100'
+        }`}>
+          <div className="text-center mb-6">
+            <div className="text-5xl mb-4">🔐</div>
+            <h1 className={`text-2xl font-bold mb-2 ${actualTheme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+              Ödeme İçin Giriş Gerekli
+            </h1>
+            <p className={`${actualTheme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+              Sepetiniz hazır. Sipariş ve ödeme akışını başlatmak için önce bir kullanıcı oturumu açılmalı.
+            </p>
+          </div>
+
+          <div className={`rounded-2xl p-4 mb-6 ${
+            actualTheme === 'dark' ? 'bg-slate-700/60 text-slate-300' : 'bg-slate-50 text-slate-600'
+          }`}>
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span>Sepet Toplamı</span>
+              <span className="font-bold">{formatCurrency(finalTotal)}</span>
+            </div>
+            <div className="text-xs">
+              Bu projede giriş akışı simülasyon menüsüyle çalışıyor. İstersen tek tıkla demo müşteri oturumu açabilirsin.
+            </div>
+          </div>
+
+          {errorMsg && (
+            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 text-xs rounded-lg border border-red-200 dark:border-red-800 text-center font-bold">
+              {errorMsg}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <button
+              onClick={handleDemoCustomerLogin}
+              disabled={isLoggingIn}
+              className="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition disabled:opacity-60"
+            >
+              {isLoggingIn ? 'Müşteri Oturumu Açılıyor...' : 'Demo Müşteri Olarak Devam Et'}
+            </button>
+            <Link
+              to="/cart"
+              className={`block w-full text-center py-3 rounded-xl font-semibold transition ${
+                actualTheme === 'dark'
+                  ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Sepete Geri Dön
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (orderSuccess) {
     return (

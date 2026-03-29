@@ -44,58 +44,67 @@ interface APIOrder {
 // Status mapping
 const mapAPIStatusToOrderStatus = (status: string): OrderStatus => {
   const statusMap: Record<string, OrderStatus> = {
-    'PENDING': OrderStatus.PROCESSING,
-    'CONFIRMED': OrderStatus.PROCESSING,
-    'PREPARING': OrderStatus.PROCESSING,
+    'PENDING': OrderStatus.PENDING,
+    'CONFIRMED': OrderStatus.CONFIRMED,
+    'PREPARING': OrderStatus.PREPARING,
+    'PROCESSING': OrderStatus.PROCESSING,
     'SHIPPED': OrderStatus.SHIPPED,
     'DELIVERED': OrderStatus.DELIVERED,
     'CANCELLED': OrderStatus.CANCELLED,
     'REFUNDED': OrderStatus.CANCELLED,
   };
-  return statusMap[status] || OrderStatus.PROCESSING;
+  return statusMap[status] || OrderStatus.PENDING;
 };
 
 // API order'ı frontend formatına çevir
-const mapAPIOrderToOrder = (apiOrder: APIOrder): Order => ({
-  id: apiOrder.orderNumber || apiOrder.id,
-  userId: apiOrder.userId,
-  customerName: apiOrder.address?.fullName || apiOrder.user?.name || 'Misafir',
-  customerPhone: apiOrder.address?.phone || apiOrder.user?.phone,
-  customerEmail: apiOrder.user?.email,
-  customerAddress: apiOrder.address 
-    ? `${apiOrder.address.address}, ${apiOrder.address.district}/${apiOrder.address.city}`
-    : undefined,
-  items: apiOrder.items?.map(item => ({
-    product: {
-      id: item.product.id,
-      sku: item.product.sku,
-      name: item.product.name,
-      category: item.product.category.toLowerCase() as any,
-      price_usd: item.product.priceUsd,
-      vat_rate: 0.20,
-      stock: 0,
-      critical_limit: 0,
-      shelf_location: '',
-      compatible_models: [],
-      image_url: item.product.imageUrl,
-    },
-    quantity: item.quantity,
-  })) || [],
-  totalAmount: apiOrder.totalAmount,
-  status: mapAPIStatusToOrderStatus(apiOrder.status),
-  trackingNumber: apiOrder.trackingNumber,
-  shippingCompany: apiOrder.carrier,
-  createdAt: new Date(apiOrder.createdAt),
-  shippedAt: apiOrder.shippedAt ? new Date(apiOrder.shippedAt) : undefined,
-  deliveredAt: apiOrder.deliveredAt ? new Date(apiOrder.deliveredAt) : undefined,
-  notes: apiOrder.adminNote || apiOrder.customerNote,
-});
+const mapAPIOrderToOrder = (apiOrder: APIOrder): Order => {
+  const orderId = apiOrder.orderNumber || apiOrder.id || 'unknown';
+  
+  return {
+    id: orderId,
+    userId: apiOrder.userId || '',
+    customerName: apiOrder.address?.fullName || apiOrder.user?.name || 'Misafir',
+    customerPhone: apiOrder.address?.phone || apiOrder.user?.phone || '',
+    customerEmail: apiOrder.user?.email || '',
+    customerAddress: apiOrder.address 
+      ? `${apiOrder.address.address}, ${apiOrder.address.district}/${apiOrder.address.city}`
+      : '',
+    items: Array.isArray(apiOrder.items) ? apiOrder.items.map(item => ({
+      product: {
+        id: item.product?.id || '',
+        sku: item.product?.sku || '',
+        name: item.product?.name || 'Bilinmeyen Ürün',
+        categoryId: typeof item.product?.category === 'string' 
+          ? item.product.category.toLowerCase() 
+          : (typeof item.product?.category === 'object' && item.product.category !== null 
+              ? (item.product.category as any).name?.toLowerCase() || 'other'
+              : 'other'),
+        price_usd: item.product?.priceUsd || 0,
+        vat_rate: 0.20,
+        stock: 0,
+        critical_limit: 0,
+        shelf_location: '',
+        compatible_models: [],
+        image_url: item.product?.imageUrl,
+      },
+      quantity: item.quantity || 0,
+    })) : [],
+    totalAmount: apiOrder.totalAmount || 0,
+    status: mapAPIStatusToOrderStatus(apiOrder.status),
+    trackingNumber: apiOrder.trackingNumber,
+    shippingCompany: apiOrder.carrier,
+    createdAt: apiOrder.createdAt ? new Date(apiOrder.createdAt) : new Date(),
+    shippedAt: apiOrder.shippedAt ? new Date(apiOrder.shippedAt) : undefined,
+    deliveredAt: apiOrder.deliveredAt ? new Date(apiOrder.deliveredAt) : undefined,
+    notes: apiOrder.adminNote || apiOrder.customerNote || '',
+  };
+};
 
 interface OrderContextType {
   orders: Order[];
   isLoading: boolean;
   error: string | null;
-  placeOrder: (items: CartItem[], totalAmount: number, customerInfo: { 
+  placeOrder: (items: CartItem[], customerInfo: { 
     userId: string; 
     name: string;
     phone?: string;
@@ -103,6 +112,7 @@ interface OrderContextType {
     address?: string;
     addressId?: string;
     couponCode?: string;
+    paymentMethod?: string;
   }) => Promise<Order>;
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => Promise<void>;
   updateTrackingNumber: (orderId: string, trackingNumber: string, shippingCompany?: string) => Promise<void>;
@@ -153,7 +163,6 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
    */
   const placeOrder = async (
     items: CartItem[], 
-    totalAmount: number, 
     customerInfo: { 
       userId: string; 
       name: string; 
@@ -162,6 +171,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       address?: string;
       addressId?: string;
       couponCode?: string;
+      paymentMethod?: string;
     }
   ): Promise<Order> => {
     try {
@@ -173,6 +183,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         addressId: customerInfo.addressId,
         couponCode: customerInfo.couponCode,
         customerNote: customerInfo.address,
+        paymentMethod: customerInfo.paymentMethod,
       });
       
       if (response.success && response.data) {
@@ -194,6 +205,9 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     // Frontend status'u API status'a çevir
     const statusMap: Record<OrderStatus, string> = {
+      [OrderStatus.PENDING]: 'PENDING',
+      [OrderStatus.CONFIRMED]: 'CONFIRMED',
+      [OrderStatus.PREPARING]: 'PREPARING',
       [OrderStatus.PROCESSING]: 'PREPARING',
       [OrderStatus.SHIPPED]: 'SHIPPED',
       [OrderStatus.DELIVERED]: 'DELIVERED',

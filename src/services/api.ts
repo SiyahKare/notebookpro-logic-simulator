@@ -19,6 +19,12 @@ const api: AxiosInstance = axios.create({
   timeout: 10000,
 });
 
+const isMethodFallbackError = (error: unknown) => {
+  if (!axios.isAxiosError(error)) return false;
+  const status = error.response?.status;
+  return status === 404 || status === 405;
+};
+
 // Token management
 export const tokenManager = {
   getAccessToken: () => localStorage.getItem(ACCESS_TOKEN_KEY),
@@ -152,7 +158,8 @@ export const productsAPI = {
   create: async (data: {
     sku: string;
     name: string;
-    category: string;
+    categoryId: string;
+    subCategoryId?: string;
     priceUsd: number;
     stock?: number;
     description?: string;
@@ -202,6 +209,46 @@ export const productsAPI = {
   
   addReview: async (id: string, data: { rating: number; comment?: string }) => {
     const response = await api.post(`/products/${id}/review`, data);
+    return response.data;
+  },
+};
+
+// ========================
+// CATEGORIES API
+// ========================
+export const categoriesAPI = {
+  getAll: async () => {
+    const response = await api.get('/categories');
+    return response.data;
+  },
+  
+  create: async (data: { name: string; description?: string }) => {
+    const response = await api.post('/categories', data);
+    return response.data;
+  },
+  
+  update: async (id: string, data: { name?: string; description?: string }) => {
+    const response = await api.put(`/categories/${id}`, data);
+    return response.data;
+  },
+  
+  delete: async (id: string) => {
+    const response = await api.delete(`/categories/${id}`);
+    return response.data;
+  },
+  
+  createSubCategory: async (categoryId: string, data: { name: string }) => {
+    const response = await api.post(`/categories/${categoryId}/subcategories`, data);
+    return response.data;
+  },
+  
+  updateSubCategory: async (subId: string, data: { name: string }) => {
+    const response = await api.put(`/categories/subcategories/${subId}`, data);
+    return response.data;
+  },
+  
+  deleteSubCategory: async (subId: string) => {
+    const response = await api.delete(`/categories/subcategories/${subId}`);
     return response.data;
   },
 };
@@ -320,8 +367,20 @@ export const usersAPI = {
     limit?: number;
     role?: string;
     isApproved?: boolean;
+    search?: string;
   }) => {
     const response = await api.get('/users', { params });
+    return response.data;
+  },
+  
+  create: async (data: {
+    name: string;
+    email: string;
+    phone?: string;
+    password?: string;
+    role: string;
+  }) => {
+    const response = await api.post('/users', data);
     return response.data;
   },
   
@@ -394,13 +453,25 @@ export const notificationsAPI = {
   },
   
   markAsRead: async (id: string) => {
-    const response = await api.patch(`/notifications/${id}/read`);
-    return response.data;
+    try {
+      const response = await api.post(`/notifications/${id}/read`);
+      return response.data;
+    } catch (error) {
+      if (!isMethodFallbackError(error)) throw error;
+      const response = await api.patch(`/notifications/${id}/read`);
+      return response.data;
+    }
   },
   
   markAllAsRead: async () => {
-    const response = await api.patch('/notifications/read-all');
-    return response.data;
+    try {
+      const response = await api.post('/notifications/read-all');
+      return response.data;
+    } catch (error) {
+      if (!isMethodFallbackError(error)) throw error;
+      const response = await api.patch('/notifications/read-all');
+      return response.data;
+    }
   },
   
   delete: async (id: string) => {
@@ -479,7 +550,7 @@ export const settingsAPI = {
   },
   
   bulkUpdate: async (settings: Array<{ key: string; value: string; type?: string }>) => {
-    const response = await api.put('/settings', { settings });
+    const response = await api.post('/settings/bulk', { settings });
     return response.data;
   },
 };
@@ -512,6 +583,13 @@ export const paymentAPI = {
     expireYear: string;
     cvc: string;
     price: number;
+    installment?: number;
+    items?: Array<{
+      id: string;
+      name: string;
+      price: number;
+      quantity?: number;
+    }>;
     buyerInfo?: any;
     addressInfo?: any;
   }) => {
@@ -521,4 +599,3 @@ export const paymentAPI = {
 };
 
 export default api;
-

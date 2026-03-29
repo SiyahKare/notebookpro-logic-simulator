@@ -16,6 +16,7 @@ router.post('/charge', authenticate, asyncHandler(async (req: Request, res: Resp
     expireYear,
     cvc,
     price,
+    installment = 1,
     items,     // Optional, fallback to generic
     buyerInfo, // Optional, fallback to generic
     addressInfo// Optional, fallback to generic
@@ -32,7 +33,7 @@ router.post('/charge', authenticate, asyncHandler(async (req: Request, res: Resp
     price: price.toString(),
     paidPrice: price.toString(),
     currency: 'TRY',
-    installment: '1',
+    installment: String(installment),
     basketId: 'B' + Date.now(),
     paymentChannel: 'WEB',
     paymentGroup: 'PRODUCT',

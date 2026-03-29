@@ -5,6 +5,29 @@ import { authenticate } from '../middlewares/auth.js';
 
 const router = Router();
 
+const markNotificationAsRead = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const notification = await prisma.notification.findFirst({
+    where: { id, userId: req.user!.id }
+  });
+
+  if (!notification) throw new AppError('Bildirim bulunamadi', 404);
+
+  await prisma.notification.update({ where: { id }, data: { isRead: true } });
+
+  res.json({ success: true });
+});
+
+const markAllNotificationsAsRead = asyncHandler(async (req: Request, res: Response) => {
+  await prisma.notification.updateMany({
+    where: { userId: req.user!.id, isRead: false },
+    data: { isRead: true }
+  });
+
+  res.json({ success: true, message: 'Tum bildirimler okundu' });
+});
+
 // GET /api/notifications
 router.get('/', authenticate, asyncHandler(async (req: Request, res: Response) => {
   const { unreadOnly, page = '1', limit = '20' } = req.query;
@@ -34,30 +57,13 @@ router.get('/', authenticate, asyncHandler(async (req: Request, res: Response) =
   });
 }));
 
-// PATCH /api/notifications/:id/read
-router.patch('/:id/read', authenticate, asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+// POST/PATCH /api/notifications/:id/read
+router.post('/:id/read', authenticate, markNotificationAsRead);
+router.patch('/:id/read', authenticate, markNotificationAsRead);
 
-  const notification = await prisma.notification.findFirst({
-    where: { id, userId: req.user!.id }
-  });
-
-  if (!notification) throw new AppError('Bildirim bulunamadi', 404);
-
-  await prisma.notification.update({ where: { id }, data: { isRead: true } });
-
-  res.json({ success: true });
-}));
-
-// POST /api/notifications/read-all
-router.post('/read-all', authenticate, asyncHandler(async (req: Request, res: Response) => {
-  await prisma.notification.updateMany({
-    where: { userId: req.user!.id, isRead: false },
-    data: { isRead: true }
-  });
-
-  res.json({ success: true, message: 'Tum bildirimler okundu' });
-}));
+// POST/PATCH /api/notifications/read-all
+router.post('/read-all', authenticate, markAllNotificationsAsRead);
+router.patch('/read-all', authenticate, markAllNotificationsAsRead);
 
 // DELETE /api/notifications/:id
 router.delete('/:id', authenticate, asyncHandler(async (req: Request, res: Response) => {
@@ -71,4 +77,3 @@ router.delete('/:id', authenticate, asyncHandler(async (req: Request, res: Respo
 }));
 
 export default router;
-

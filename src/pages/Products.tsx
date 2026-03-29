@@ -5,13 +5,13 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useCurrency } from '../context/CurrencyContext';
-import { ProductCategory, UserRole } from '../types';
+import { UserRole } from '../types';
 import SEO from '../components/SEO';
 
 const Products: React.FC = () => {
   const { category } = useParams<{ category?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { products } = useProducts();
+  const { products, categories } = useProducts();
   const { actualTheme } = useTheme();
   const { user } = useAuth();
   const { addToCart } = useCart();
@@ -39,7 +39,10 @@ const Products: React.FC = () => {
 
     // Category filter
     if (category && category !== 'all') {
-      result = result.filter(p => p.category === category);
+      const activeCat = categories.find(c => c.slug === category);
+      if (activeCat) {
+        result = result.filter(p => p.categoryId === activeCat.id);
+      }
     }
 
     // Search filter
@@ -74,9 +77,7 @@ const Products: React.FC = () => {
     }
 
     return result;
-  }, [products, category, searchTerm, priceRange, sortBy, isDealer, exchangeRate]);
-
-  const categories = Object.values(ProductCategory);
+  }, [products, categories, category, searchTerm, priceRange, sortBy, isDealer, exchangeRate]);
 
   return (
     <div className={`min-h-screen py-8 ${actualTheme === 'dark' ? 'bg-slate-900' : 'bg-slate-50'}`}>
@@ -145,17 +146,17 @@ const Products: React.FC = () => {
                   </Link>
                   {categories.map(cat => (
                     <Link
-                      key={cat}
-                      to={`/products/${cat}`}
+                      key={cat.id}
+                      to={`/products/${cat.slug}`}
                       className={`block px-3 py-2 rounded-lg text-sm transition ${
-                        category === cat
+                        category === cat.slug
                           ? 'bg-red-600 text-white'
                           : actualTheme === 'dark'
                             ? 'text-slate-300 hover:bg-slate-700'
                             : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
-                      {cat.toUpperCase()}
+                      {cat.name}
                     </Link>
                   ))}
                 </div>
@@ -280,7 +281,7 @@ const Products: React.FC = () => {
                           <span className={`text-xs px-2 py-0.5 rounded ${
                             actualTheme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
                           }`}>
-                            {product.category.toUpperCase()}
+                            {product.category?.name || 'Diğer'}
                           </span>
                           <span className={`text-xs font-mono ${
                             actualTheme === 'dark' ? 'text-slate-500' : 'text-slate-400'

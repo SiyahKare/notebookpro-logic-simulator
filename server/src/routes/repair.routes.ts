@@ -166,7 +166,8 @@ router.post('/', optionalAuth, asyncHandler(async (req: Request, res: Response) 
   const repair = await prisma.repair.create({
     data: {
       trackingCode: generateTrackingCode(),
-      userId: req.user?.id,
+      userId: (req.user?.role === 'CUSTOMER' || req.user?.role === 'DEALER') ? req.user.id : undefined,
+      technicianId: req.user?.role === 'TECHNICIAN' ? req.user.id : undefined,
       customerName,
       customerPhone,
       customerEmail,
@@ -181,6 +182,11 @@ router.post('/', optionalAuth, asyncHandler(async (req: Request, res: Response) 
           note: 'Cihaz teslim alındı',
           createdBy: req.user?.name || 'Sistem'
         }
+      }
+    },
+    include: {
+      statusHistory: {
+        orderBy: { createdAt: 'desc' }
       }
     }
   });
@@ -201,10 +207,7 @@ router.post('/', optionalAuth, asyncHandler(async (req: Request, res: Response) 
   res.status(201).json({
     success: true,
     message: 'Servis kaydı oluşturuldu',
-    data: {
-      id: repair.id,
-      trackingCode: repair.trackingCode
-    }
+    data: repair
   });
 }));
 
@@ -213,7 +216,7 @@ router.post('/', optionalAuth, asyncHandler(async (req: Request, res: Response) 
 // ===================
 router.patch('/:id/status', authenticate, staffOnly, asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { status, note, estimatedCost, finalCost, technicianNotes, warrantyStatus, warrantyNotes } = req.body;
+  const { status, note, estimatedCost, finalCost, technicianNotes, warrantyStatus, warrantyNotes, technicianId } = req.body;
 
   const repair = await prisma.repair.findUnique({ where: { id } });
   if (!repair) {
@@ -239,8 +242,11 @@ router.patch('/:id/status', authenticate, staffOnly, asyncHandler(async (req: Re
     updateData.deliveredAt = new Date();
   }
 
-  // Assign technician if not assigned
-  if (!repair.technicianId && req.user!.role === 'TECHNICIAN') {
+  // Assign technician explicitly if provided (Admin / Staff)
+  if (technicianId) {
+    updateData.technicianId = technicianId;
+  } else if (!repair.technicianId && req.user!.role === 'TECHNICIAN') {
+    // Auto-assign if a technician is updating a repair without one
     updateData.technicianId = req.user!.id;
   }
 

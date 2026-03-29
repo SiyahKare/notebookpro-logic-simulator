@@ -42,14 +42,23 @@ cloudflared tunnel create notebookpro
 # 4. Credentials dosyasını bul ve kopyala
 echo ""
 echo -e "${YELLOW}4️⃣  Credentials dosyası kontrol ediliyor...${NC}"
-CRED_FILE=$(ls ~/.cloudflared/*.json 2>/dev/null | head -1)
+CRED_FILE=$(ls -t ~/.cloudflared/*.json 2>/dev/null | head -1)
 if [ -n "$CRED_FILE" ]; then
-    # Config dosyasındaki yolu güncelle
     TUNNEL_ID=$(basename "$CRED_FILE" .json)
     echo -e "${GREEN}   ✅ Tunnel ID: ${TUNNEL_ID}${NC}"
-    
-    # Credentials dosyasını doğru isimle kopyala
+
+    CONFIG_FILE="$(dirname "$0")/../cloudflare/config.yml"
+    if [ -f "$CONFIG_FILE" ]; then
+        sed -i.bak "s|^tunnel: .*|tunnel: ${TUNNEL_ID}|" "$CONFIG_FILE"
+        sed -i.bak "s|^credentials-file: .*|credentials-file: ${HOME}/.cloudflared/${TUNNEL_ID}.json|" "$CONFIG_FILE"
+        rm -f "${CONFIG_FILE}.bak"
+        echo -e "${GREEN}   ✅ cloudflare/config.yml güncellendi${NC}"
+    fi
+
     cp "$CRED_FILE" ~/.cloudflared/notebookpro.json 2>/dev/null || true
+else
+    echo -e "${RED}   ❌ Credentials dosyası bulunamadı${NC}"
+    exit 1
 fi
 
 # 5. DNS kaydı oluştur
@@ -57,6 +66,8 @@ echo ""
 echo -e "${YELLOW}5️⃣  DNS kaydı oluşturuluyor...${NC}"
 echo -e "${BLUE}   notebookpro.siyahkare.com -> tunnel${NC}"
 cloudflared tunnel route dns notebookpro notebookpro.siyahkare.com
+echo -e "${BLUE}   api-notebookpro.siyahkare.com -> tunnel${NC}"
+cloudflared tunnel route dns notebookpro api-notebookpro.siyahkare.com
 
 echo ""
 echo -e "${GREEN}╔═══════════════════════════════════════════════════╗${NC}"
@@ -67,4 +78,3 @@ echo -e "${YELLOW}Sonraki adımlar:${NC}"
 echo -e "  1. ${BLUE}./scripts/start-production.sh${NC} ile sunucuyu başlatın"
 echo -e "  2. ${BLUE}https://notebookpro.siyahkare.com${NC} adresini ziyaret edin"
 echo ""
-

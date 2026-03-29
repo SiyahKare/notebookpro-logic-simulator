@@ -116,7 +116,7 @@ const TechnicianDashboard: React.FC = () => {
   }
 
   // Get technician's repairs
-  const myRepairs = repairRecords.filter(r => r.assigned_technician === user.name);
+  const myRepairs = repairRecords.filter(r => r.assigned_technician_id === user.id || r.assigned_technician === user.name);
   const activeRepairs = myRepairs.filter(r => 
     r.status !== RepairStatus.DELIVERED && r.status !== RepairStatus.CANCELLED
   );

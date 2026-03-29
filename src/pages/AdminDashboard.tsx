@@ -5,9 +5,10 @@ import { useRepair } from '../context/RepairContext';
 import { useOrder } from '../context/OrderContext';
 import { useNotifications, NotificationType, NotificationPriority, Notification } from '../context/NotificationContext';
 import { useCurrency } from '../context/CurrencyContext';
-import { ProductCategory, Product, UserRole, RepairStatus, OrderStatus, Order, RepairRecord, WarrantyResult, OrderFilters, RepairFilters, StatusHistoryEntry, User } from '../types';
+import { Product, UserRole, RepairStatus, OrderStatus, Order, RepairRecord, WarrantyResult, OrderFilters, RepairFilters, StatusHistoryEntry, User } from '../types';
 import { formatCurrency } from '../utils/pricing';
 import SEO from '../components/SEO';
+import CategoriesTab from '../components/admin/CategoriesTab';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { usersAPI, settingsAPI } from '../services/api';
@@ -16,14 +17,14 @@ const ITEMS_PER_PAGE = 10;
 
 const AdminDashboard: React.FC = () => {
   const { user, users, approveDealer } = useAuth();
-  const { products, addProduct, updateProduct, deleteProduct, updateStock, getFilteredProducts, addStockMovement, getProductStockHistory, stockMovements } = useProducts();
+  const { products, categories, addProduct, updateProduct, deleteProduct, updateStock, getFilteredProducts, addStockMovement, getProductStockHistory, stockMovements } = useProducts();
   const { repairRecords, updateRepairStatus, assignTechnician, generateServiceLabel, sendToWarranty, concludeWarranty, getFilteredRepairs, createRepairFromAdmin } = useRepair();
   const { orders, updateOrderStatus, updateTrackingNumber, getFilteredOrders, generateInvoiceHTML } = useOrder();
   const { showToast, ToastContainer } = useToast();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearAll } = useNotifications();
   const { exchangeRate, setExchangeRate } = useCurrency();
   
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'dealers' | 'repairs' | 'orders' | 'notifications' | 'reports' | 'customers' | 'settings' | 'promotions'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'categories' | 'products' | 'dealers' | 'repairs' | 'orders' | 'notifications' | 'reports' | 'customers' | 'users' | 'settings' | 'promotions'>('dashboard');
   
   // --- Pagination ---
   const [currentPage, setCurrentPage] = useState(1);
@@ -56,10 +57,10 @@ const AdminDashboard: React.FC = () => {
   // --- Product Form State ---
   const [newProduct, setNewProduct] = useState({
     name: '', sku: '', shelf_location: '', price_usd: '', stock: '',
-    category: ProductCategory.SCREEN, models: '', critical_limit: '3', dealer_discount: '10'
+    categoryId: '', subCategoryId: '', models: '', critical_limit: '3', dealer_discount: '10'
   });
 
-  const technicians = ["Ahmet Usta", "Mehmet Ç.", "Ayşe Tek.", "Stajyer Can"];
+  const technicians = users.filter(u => u.role === UserRole.TECHNICIAN);
   const suppliers = ["Arena Bilgisayar", "KVK Teknoloji", "Penta", "Asus Türkiye", "MSI ServisPoint"];
 
   // --- Computed Data ---
@@ -109,7 +110,8 @@ const AdminDashboard: React.FC = () => {
       name: newProduct.name,
       sku: newProduct.sku,
       shelf_location: newProduct.shelf_location,
-      category: newProduct.category,
+      categoryId: newProduct.categoryId,
+      subCategoryId: newProduct.subCategoryId,
       description: 'Yeni eklenen ürün',
       image_url: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400',
       price_usd: parseFloat(newProduct.price_usd),
@@ -121,7 +123,7 @@ const AdminDashboard: React.FC = () => {
     };
 
     addProduct(productToAdd);
-    setNewProduct({ name: '', sku: '', shelf_location: '', price_usd: '', stock: '', category: ProductCategory.SCREEN, models: '', critical_limit: '3', dealer_discount: '10' });
+    setNewProduct({ name: '', sku: '', shelf_location: '', price_usd: '', stock: '', categoryId: '', subCategoryId: '', models: '', critical_limit: '3', dealer_discount: '10' });
     showToast(`"${productToAdd.name}" başarıyla eklendi!`, 'success');
   };
 
@@ -171,8 +173,11 @@ const AdminDashboard: React.FC = () => {
 
   const getStatusBadge = (status: OrderStatus) => {
     switch(status) {
+      case OrderStatus.PENDING: return 'bg-yellow-100 text-yellow-700';
+      case OrderStatus.CONFIRMED: return 'bg-blue-100 text-blue-700';
+      case OrderStatus.PREPARING:
       case OrderStatus.PROCESSING: return 'bg-amber-100 text-amber-700';
-      case OrderStatus.SHIPPED: return 'bg-blue-100 text-blue-700';
+      case OrderStatus.SHIPPED: return 'bg-indigo-100 text-indigo-700';
       case OrderStatus.DELIVERED: return 'bg-green-100 text-green-700';
       case OrderStatus.CANCELLED: return 'bg-red-100 text-red-700';
       default: return 'bg-slate-100 text-slate-700';
@@ -200,6 +205,7 @@ const AdminDashboard: React.FC = () => {
       <div className="flex gap-1 mb-8 bg-slate-100 p-1 rounded-xl w-fit flex-wrap">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+          { id: 'categories', label: 'Kategoriler', icon: '📂' },
           { id: 'products', label: 'Ürünler', icon: '📦' },
           { id: 'dealers', label: 'Bayiler', icon: '🏢', badge: pendingDealers.length },
           { id: 'repairs', label: 'Servis', icon: '🔧', badge: activeRepairs.length },
@@ -207,6 +213,7 @@ const AdminDashboard: React.FC = () => {
           { id: 'notifications', label: 'Bildirimler', icon: '🔔', badge: unreadCount },
           { id: 'reports', label: 'Raporlar', icon: '📈' },
           { id: 'customers', label: 'Müşteriler', icon: '👥' },
+          { id: 'users', label: 'Kullanıcılar', icon: '👨‍💻' },
           { id: 'promotions', label: 'Kampanyalar', icon: '🏷️' },
           { id: 'settings', label: 'Ayarlar', icon: '⚙️' },
         ].map(tab => (
@@ -229,6 +236,11 @@ const AdminDashboard: React.FC = () => {
           </button>
         ))}
           </div>
+
+      {/* ========== CATEGORIES TAB ========== */}
+      {activeTab === 'categories' && (
+        <CategoriesTab showToast={showToast} />
+      )}
 
       {/* ========== DASHBOARD TAB ========== */}
       {activeTab === 'dashboard' && (
@@ -515,12 +527,21 @@ const AdminDashboard: React.FC = () => {
                </div>
 
               <div className="grid grid-cols-2 gap-3">
-                  <div>
-                     <label className="block text-xs font-bold text-slate-500 mb-1">Kategori</label>
-                  <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
-                        value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value as ProductCategory})}>
-                    {Object.values(ProductCategory).map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+                  <div className="flex flex-col">
+                     <label className="block text-xs font-bold text-slate-500 mb-1">Kategori *</label>
+                  <select required className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none"
+                        value={newProduct.categoryId} onChange={e => setNewProduct({...newProduct, categoryId: e.target.value, subCategoryId: ''})}>
+                    <option value="">Kategori Seçin</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                      </select>
+                  
+                  {newProduct.categoryId && categories.find(c => c.id === newProduct.categoryId)?.subCategories?.length ? (
+                    <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:border-red-500 outline-none mt-2"
+                          value={newProduct.subCategoryId} onChange={e => setNewProduct({...newProduct, subCategoryId: e.target.value})}>
+                      <option value="">Alt Kategori Seçin...</option>
+                      {categories.find(c => c.id === newProduct.categoryId)?.subCategories?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  ) : null}
                   </div>
                   <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Fiyat (USD) *</label>
@@ -593,11 +614,11 @@ const AdminDashboard: React.FC = () => {
               <select
                 className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-red-500 outline-none"
                 value={filters.category}
-                onChange={e => handleFilterChange({ category: e.target.value as ProductCategory | 'all' })}
+                onChange={e => handleFilterChange({ category: e.target.value })}
               >
                 <option value="all">Tüm Kategoriler</option>
-                {Object.values(ProductCategory).map(c => (
-                  <option key={c} value={c}>{c.toUpperCase()}</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
 
@@ -816,6 +837,15 @@ const AdminDashboard: React.FC = () => {
         <CustomersTab
           orders={orders}
           repairRecords={repairRecords}
+          formatCurrency={formatCurrency}
+        />
+      )}
+
+      {/* ========== USERS TAB ========== */}
+      {activeTab === 'users' && (
+        <UsersTab
+          orders={orders}
+          repairRecords={repairRecords}
           users={users}
           formatCurrency={formatCurrency}
           showToast={showToast}
@@ -890,9 +920,10 @@ const AdminDashboard: React.FC = () => {
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">Kategori</label>
                 <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
-                  value={editingProduct.category}
-                  onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value as ProductCategory })}>
-                  {Object.values(ProductCategory).map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+                  value={editingProduct.categoryId}
+                  onChange={e => setEditingProduct({ ...editingProduct, categoryId: e.target.value })}>
+                  <option value="">Seçiniz</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                           </div>
               <div>
@@ -1209,7 +1240,7 @@ const RepairsTab: React.FC<{
   generateServiceLabel: (record: RepairRecord) => void;
   openWarrantyModal: (record: RepairRecord) => void;
   showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
-  technicians: string[];
+  technicians: User[];
 }> = ({ repairRecords, getFilteredRepairs, createRepairFromAdmin, updateRepairStatus, assignTechnician, generateServiceLabel, openWarrantyModal, showToast, technicians }) => {
   const [repairFilters, setRepairFilters] = useState<RepairFilters>({ search: '', status: 'all' });
   const [showNewRepairForm, setShowNewRepairForm] = useState(false);
@@ -1321,11 +1352,11 @@ const RepairsTab: React.FC<{
                   <td className="px-4 py-3">
                     <select
                       className="bg-white border border-slate-200 text-xs rounded p-1.5 outline-none w-full max-w-[120px]"
-                      value={r.assigned_technician || ''}
+                      value={r.assigned_technician_id || ''}
                       onChange={e => assignTechnician(r.tracking_code, e.target.value)}
                     >
                       <option value="">Atanmadı</option>
-                      {technicians.map(t => <option key={t} value={t}>{t}</option>)}
+                      {technicians.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                   </td>
                   <td className="px-4 py-3">
@@ -1970,7 +2001,7 @@ const ImportExportBar: React.FC<{
         csvContent += [
           p.sku,
           p.name,
-          p.category,
+          p.category?.name || p.categoryId,
           p.price_usd,
           p.stock,
           p.critical_limit,
@@ -2047,7 +2078,8 @@ const ImportExportBar: React.FC<{
             id: `import-${Date.now()}-${i}`,
             sku: values[0] || `SKU-${Date.now()}-${i}`,
             name: values[1] || 'İsimsiz Ürün',
-            category: (values[2] as ProductCategory) || ProductCategory.SCREEN,
+            categoryId: values[2] || '',
+            subCategoryId: '',
             price_usd: parseFloat(values[3]) || 0,
             stock: parseInt(values[4]) || 0,
             critical_limit: parseInt(values[5]) || 3,
@@ -2504,10 +2536,8 @@ const SettingsTab: React.FC<{
 const CustomersTab: React.FC<{
   orders: Order[];
   repairRecords: RepairRecord[];
-  users: User[];
   formatCurrency: (amount: number) => string;
-  showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
-}> = ({ orders, repairRecords, users, formatCurrency, showToast }) => {
+}> = ({ orders, repairRecords, formatCurrency }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<{
     name: string;
@@ -2516,6 +2546,7 @@ const CustomersTab: React.FC<{
     orders: Order[];
     repairs: RepairRecord[];
     totalSpent: number;
+    lastActivity: Date;
   } | null>(null);
 
   // Build customer list from orders and repairs
@@ -2597,12 +2628,12 @@ const CustomersTab: React.FC<{
 
   const getRoleBadge = (customer: typeof customers[0]) => {
     if (customer.orders.length >= 5 || customer.totalSpent > 50000) {
-      return { label: 'VIP', bg: 'bg-yellow-100 text-yellow-700' };
+      return { label: 'VIP Müşteri', bg: 'bg-yellow-100 text-yellow-700' };
     }
-    if (customer.orders.length >= 2) {
+    if (customer.orders.length >= 2 || customer.repairs.length >= 2) {
       return { label: 'Düzenli', bg: 'bg-green-100 text-green-700' };
     }
-    return { label: 'Yeni', bg: 'bg-slate-100 text-slate-600' };
+    return { label: 'Standart', bg: 'bg-slate-100 text-slate-600' };
   };
 
   return (
@@ -2666,8 +2697,10 @@ const CustomersTab: React.FC<{
       {/* Customer List */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-bold text-slate-800">👥 Müşteri Listesi</h3>
-          <span className="text-sm text-slate-500">{filteredCustomers.length} müşteri</span>
+          <div>
+            <h3 className="font-bold text-slate-800">👥 Müşteri Listesi</h3>
+            <span className="text-sm text-slate-500">{filteredCustomers.length} müşteri</span>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -2679,6 +2712,388 @@ const CustomersTab: React.FC<{
                 <th className="px-6 py-3 text-center">Servis</th>
                 <th className="px-6 py-3 text-right">Toplam Harcama</th>
                 <th className="px-6 py-3 text-center">Durum</th>
+                <th className="px-6 py-3 text-right">İşlem</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCustomers.length === 0 ? (
+                <tr><td colSpan={7} className="text-center py-12 text-slate-400">Müşteri bulunamadı</td></tr>
+              ) : (
+                filteredCustomers.map((customer, idx) => {
+                  const badge = getRoleBadge(customer);
+                  return (
+                    <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                            {customer.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-medium text-slate-800">{customer.name}</div>
+                            <div className="text-[10px] text-slate-400">
+                              Son: {customer.lastActivity.toLocaleDateString('tr-TR')}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-slate-700">{customer.phone || '-'}</div>
+                        <div className="text-xs text-slate-400">{customer.email || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex items-center justify-center w-8 h-8 bg-green-100 text-green-700 rounded-lg font-bold">
+                          {customer.orders.length}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex items-center justify-center w-8 h-8 bg-amber-100 text-amber-700 rounded-lg font-bold">
+                          {customer.repairs.length}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="font-bold text-slate-900">{formatCurrency(customer.totalSpent)}</span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${badge.bg}`}>
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => setSelectedCustomer(customer)}
+                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                          title="Detay"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Customer Detail Modal */}
+      {selectedCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white px-6 py-4 border-b border-slate-100 flex justify-between items-center z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                  {selectedCustomer.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800">{selectedCustomer.name}</h3>
+                  <div className="text-xs text-slate-500">{selectedCustomer.phone} • {selectedCustomer.email}</div>
+                </div>
+              </div>
+              <button onClick={() => setSelectedCustomer(null)} className="text-slate-400 hover:text-red-600 text-xl">✕</button>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* Summary */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-green-50 p-4 rounded-xl text-center">
+                  <div className="text-2xl font-bold text-green-700">{selectedCustomer.orders.length}</div>
+                  <div className="text-xs text-green-600">Sipariş</div>
+                </div>
+                <div className="bg-amber-50 p-4 rounded-xl text-center">
+                  <div className="text-2xl font-bold text-amber-700">{selectedCustomer.repairs.length}</div>
+                  <div className="text-xs text-amber-600">Servis Kaydı</div>
+                </div>
+                <div className="bg-blue-50 p-4 rounded-xl text-center">
+                  <div className="text-2xl font-bold text-blue-700">{formatCurrency(selectedCustomer.totalSpent)}</div>
+                  <div className="text-xs text-blue-600">Toplam Harcama</div>
+                </div>
+              </div>
+
+              {/* Lists */}
+              <div>
+                <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                  <span className="text-amber-500">🔧</span> Son Servis Kayıtları
+                </h4>
+                {selectedCustomer.repairs.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedCustomer.repairs.map(repair => (
+                      <div key={repair.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex justify-between items-start">
+                        <div>
+                          <div className="font-medium text-slate-800 text-sm">{repair.device_brand} {repair.device_model}</div>
+                          <div className="text-xs text-slate-500 mt-1">{repair.issue_description}</div>
+                        </div>
+                        <div className="text-right whitespace-nowrap ml-4">
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold ${
+                            repair.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                            repair.status === 'DELIVERED' ? 'bg-slate-200 text-slate-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {repair.status}
+                          </span>
+                          <div className="text-[10px] text-slate-400 mt-1">{new Date(repair.created_at).toLocaleDateString('tr-TR')}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-slate-500 italic p-4 bg-slate-50 rounded-xl text-center">
+                    Henüz servis kaydı yok
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                  <span className="text-green-500">📦</span> Son Siparişleri
+                </h4>
+                {selectedCustomer.orders.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedCustomer.orders.map(order => (
+                      <div key={order.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex justify-between items-center">
+                        <div>
+                          <div className="font-mono font-medium text-slate-800 text-sm">#{order.id.slice(0,8).toUpperCase()}</div>
+                          <div className="text-xs text-slate-500 mt-1">{new Date(order.createdAt).toLocaleDateString('tr-TR')}</div>
+                        </div>
+                        <div className="text-right whitespace-nowrap ml-4">
+                          <div className="font-bold text-slate-900">{formatCurrency(order.totalAmount)}</div>
+                          <div className="text-[10px] text-slate-500 mt-1">{order.items.length} ürün</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-slate-500 italic p-4 bg-slate-50 rounded-xl text-center">
+                    Henüz siparişi yok
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Users Tab Component
+const UsersTab: React.FC<{
+  orders: Order[];
+  repairRecords: RepairRecord[];
+  users: User[];
+  formatCurrency: (amount: number) => string;
+  showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
+}> = ({ orders, repairRecords, users, formatCurrency, showToast }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { refreshUsers } = useAuth();
+  const [newUserData, setNewUserData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    role: 'CUSTOMER'
+  });
+  const [selectedCustomer, setSelectedCustomer] = useState<{
+    id: string;
+    name: string;
+    phone: string;
+    email: string;
+    role: string;
+    isApproved: boolean;
+    orders: Order[];
+    repairs: RepairRecord[];
+    totalSpent: number;
+    lastActivity: Date;
+  } | null>(null);
+
+  const handleAddCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsSubmitting(true);
+      await usersAPI.create(newUserData);
+      showToast('Kullanıcı başarıyla eklendi', 'success');
+      setShowAddModal(false);
+      setNewUserData({ name: '', email: '', phone: '', password: '', role: 'CUSTOMER' });
+      if (refreshUsers) await refreshUsers();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Kullanıcı eklenirken bir hata oluştu', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    try {
+      await usersAPI.update(userId, { role: newRole });
+      showToast('Kullanıcı rolü güncellendi', 'success');
+      if (refreshUsers) await refreshUsers();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Rol güncellenirken bir hata oluştu', 'error');
+    }
+  };
+
+  // Build customer list directly from DB users
+  const customers = useMemo(() => {
+    return users.map(user => {
+      // Find orders matching this user
+      const userOrders = orders.filter(o => o.userId === user.id || (o.customerEmail && o.customerEmail === user.email));
+      
+      // Find repairs matching this user (as customer or technician)
+      const userRepairs = repairRecords.filter(r => 
+        r.assigned_technician_id === user.id || 
+        (r.customer_email && r.customer_email === user.email) ||
+        (user.role === 'CUSTOMER' && r.userId === user.id)
+      );
+
+      const totalSpent = userOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+      
+      let lastActivity = new Date(user.created_at || Date.now());
+      if (userOrders.length > 0) {
+        const lastOrderDate = new Date(userOrders[userOrders.length - 1].createdAt);
+        if (lastOrderDate > lastActivity) lastActivity = lastOrderDate;
+      }
+      if (userRepairs.length > 0) {
+        const lastRepairDate = new Date(userRepairs[0].created_at);
+        if (lastRepairDate > lastActivity) lastActivity = lastRepairDate;
+      }
+
+      return {
+        id: user.id,
+        name: user.name,
+        phone: user.phone || '',
+        email: user.email,
+        role: user.role,
+        isApproved: user.is_approved,
+        orders: userOrders,
+        repairs: userRepairs,
+        totalSpent,
+        lastActivity,
+      };
+    }).sort((a, b) => b.totalSpent - a.totalSpent);
+  }, [users, orders, repairRecords]);
+
+  // Filter customers
+  const filteredCustomers = customers.filter(c => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(term) ||
+      c.phone.toLowerCase().includes(term) ||
+      c.email.toLowerCase().includes(term)
+    );
+  });
+
+  // Stats
+  const stats = useMemo(() => ({
+    totalCustomers: customers.length,
+    totalRevenue: customers.reduce((sum, c) => sum + c.totalSpent, 0),
+    avgSpent: customers.length > 0 ? customers.reduce((sum, c) => sum + c.totalSpent, 0) / customers.length : 0,
+    repeatCustomers: customers.filter(c => c.orders.length > 1 || c.repairs.length > 1).length,
+  }), [customers]);
+
+  const getRoleBadge = (customer: typeof customers[0]) => {
+    switch (customer.role) {
+      case 'ADMIN': return { label: 'Yönetici', bg: 'bg-purple-100 text-purple-700' };
+      case 'TECHNICIAN': return { label: 'Teknisyen', bg: 'bg-blue-100 text-blue-700' };
+      case 'DEALER': return { label: 'Bayi', bg: 'bg-amber-100 text-amber-700' };
+      case 'CUSTOMER':
+      default:
+        if (customer.orders.length >= 5 || customer.totalSpent > 50000) {
+          return { label: 'VIP Müşteri', bg: 'bg-yellow-100 text-yellow-700' };
+        }
+        if (customer.orders.length >= 1 || customer.repairs.length >= 1) {
+          return { label: 'Aktif', bg: 'bg-green-100 text-green-700' };
+        }
+        return { label: 'Yeni', bg: 'bg-slate-100 text-slate-600' };
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-2xl">👥</div>
+            <div>
+              <div className="text-2xl font-bold text-slate-900">{stats.totalCustomers}</div>
+              <div className="text-xs text-slate-500">Toplam Müşteri</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-2xl">💰</div>
+            <div>
+              <div className="text-2xl font-bold text-green-600">{formatCurrency(stats.totalRevenue)}</div>
+              <div className="text-xs text-slate-500">Toplam Ciro</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-2xl">📊</div>
+            <div>
+              <div className="text-2xl font-bold text-purple-600">{formatCurrency(stats.avgSpent)}</div>
+              <div className="text-xs text-slate-500">Ort. Harcama</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-2xl">🔄</div>
+            <div>
+              <div className="text-2xl font-bold text-amber-600">{stats.repeatCustomers}</div>
+              <div className="text-xs text-slate-500">Tekrar Eden</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Müşteri ara: isim, telefon, e-posta..."
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+      </div>
+
+      {/* Customer List */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-slate-800">👥 Kullanıcı Listesi</h3>
+            <span className="text-sm text-slate-500">{filteredCustomers.length} kullanıcı</span>
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition flex items-center gap-2"
+          >
+            <span>+</span> Ekle
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
+                <th className="px-6 py-3 text-left">Kullanıcı</th>
+                <th className="px-6 py-3 text-left">İletişim</th>
+                <th className="px-6 py-3 text-center">Sipariş</th>
+                <th className="px-6 py-3 text-center">Servis</th>
+                <th className="px-6 py-3 text-right">Toplam Harcama</th>
+                <th className="px-6 py-3 text-center">Rol</th>
                 <th className="px-6 py-3 text-right">İşlem</th>
               </tr>
             </thead>
@@ -2721,9 +3136,16 @@ const CustomersTab: React.FC<{
                         <span className="font-bold text-slate-900">{formatCurrency(customer.totalSpent)}</span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${badge.bg}`}>
-                          {badge.label}
-                        </span>
+                        <select
+                          className={`px-2 py-1 rounded outline-none font-medium text-xs cursor-pointer border-transparent hover:border-slate-200 transition ${badge.bg}`}
+                          value={customer.role}
+                          onChange={(e) => handleRoleChange(customer.id, e.target.value)}
+                        >
+                          <option value="CUSTOMER">Müşteri</option>
+                          <option value="DEALER">Bayi</option>
+                          <option value="TECHNICIAN">Teknisyen</option>
+                          <option value="ADMIN">Yönetici</option>
+                        </select>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <button
@@ -2860,6 +3282,59 @@ const CustomersTab: React.FC<{
           </div>
         </div>
       )}
+
+      {/* Add New User Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="font-bold text-slate-800">Kullanıcı / Müşteri Ekle</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-red-600 text-xl">✕</button>
+            </div>
+            <form onSubmit={handleAddCustomer} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Ad Soyad *</label>
+                  <input required className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:border-red-500"
+                    value={newUserData.name} onChange={e => setNewUserData({...newUserData, name: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">E-posta *</label>
+                  <input required type="email" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:border-red-500"
+                    value={newUserData.email} onChange={e => setNewUserData({...newUserData, email: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Telefon</label>
+                  <input className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:border-red-500"
+                    placeholder="05XX XXX XX XX"
+                    value={newUserData.phone} onChange={e => setNewUserData({...newUserData, phone: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Geçici Şifre *</label>
+                  <input required type="text" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:border-red-500"
+                    value={newUserData.password} onChange={e => setNewUserData({...newUserData, password: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Rol *</label>
+                  <select required className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:border-red-500"
+                    value={newUserData.role} onChange={e => setNewUserData({...newUserData, role: e.target.value})}>
+                    <option value="CUSTOMER">Müşteri</option>
+                    <option value="DEALER">Bayi</option>
+                    <option value="TECHNICIAN">Teknisyen</option>
+                    <option value="ADMIN">Yönetici</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-semibold">İptal</button>
+                <button type="submit" disabled={isSubmitting} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 disabled:opacity-50">
+                  {isSubmitting ? 'Ekleniyor...' : 'Kullanıcı Ekle'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -2942,7 +3417,7 @@ const ReportsTab: React.FC<{
     const stats: Record<string, { count: number; revenue: number }> = {};
     filteredOrders.forEach(order => {
       order.items.forEach(item => {
-        const cat = item.product.category || 'other';
+        const cat = item.product.category?.name || 'Diğer';
         if (!stats[cat]) stats[cat] = { count: 0, revenue: 0 };
         stats[cat].count += item.quantity;
         stats[cat].revenue += item.quantity * item.product.price_usd * 34.5;
@@ -3205,14 +3680,18 @@ const ReportsTab: React.FC<{
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {salesStats.byStatus.map(item => (
             <div key={item.status} className={`p-4 rounded-xl ${
-              item.status === OrderStatus.PROCESSING ? 'bg-amber-50' :
-              item.status === OrderStatus.SHIPPED ? 'bg-blue-50' :
+              item.status === OrderStatus.PENDING ? 'bg-yellow-50' :
+              item.status === OrderStatus.CONFIRMED ? 'bg-blue-50' :
+              item.status === OrderStatus.PREPARING || item.status === OrderStatus.PROCESSING ? 'bg-amber-50' :
+              item.status === OrderStatus.SHIPPED ? 'bg-indigo-50' :
               item.status === OrderStatus.DELIVERED ? 'bg-green-50' :
               'bg-red-50'
             }`}>
               <div className={`text-2xl font-bold ${
-                item.status === OrderStatus.PROCESSING ? 'text-amber-700' :
-                item.status === OrderStatus.SHIPPED ? 'text-blue-700' :
+                item.status === OrderStatus.PENDING ? 'text-yellow-700' :
+                item.status === OrderStatus.CONFIRMED ? 'text-blue-700' :
+                item.status === OrderStatus.PREPARING || item.status === OrderStatus.PROCESSING ? 'text-amber-700' :
+                item.status === OrderStatus.SHIPPED ? 'text-indigo-700' :
                 item.status === OrderStatus.DELIVERED ? 'text-green-700' :
                 'text-red-700'
               }`}>{item.count}</div>

@@ -7,13 +7,13 @@ credentials-file: /Users/onurmutlu/.cloudflared/22d1e42e-c483-4ecd-ab87-68b084d5
 ingress:
   # Ana domain - notebookpro.siyahkare.com
   - hostname: notebookpro.siyahkare.com
-    service: http://localhost:4173
+    service: http://127.0.0.1:4173
     originRequest:
       noTLSVerify: true
 
   # Backend API - api-notebookpro.siyahkare.com
   - hostname: api-notebookpro.siyahkare.com
-    service: http://localhost:5001
+    service: http://127.0.0.1:5001
     originRequest:
       noTLSVerify: true
   

@@ -78,6 +78,7 @@ const Favorites: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {favorites.map((product, index) => {
                 const pricing = calculateProductPrice(product, user, exchangeRate);
+                const categoryLabel = product.category?.name || product.categoryId || 'Diger';
                 
                 return (
                   <FadeIn key={product.id} delay={index * 50}>
@@ -119,7 +120,7 @@ const Favorites: React.FC = () => {
                       <div className="p-4">
                         <div className="flex items-center justify-between mb-2">
                           <span className={`text-xs font-bold uppercase ${actualTheme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
-                            {product.category}
+                            {categoryLabel}
                           </span>
                           <span className={`text-xs font-mono ${actualTheme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
                             {product.sku}
@@ -174,4 +175,3 @@ const Favorites: React.FC = () => {
 };
 
 export default Favorites;
-

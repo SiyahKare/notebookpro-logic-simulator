@@ -14,8 +14,8 @@ const router = Router();
 const generateTokens = (user: { id: string; email: string; role: string; name: string }) => {
   const accessToken = jwt.sign(
     { id: user.id, email: user.email, role: user.role, name: user.name },
-    env.JWT_SECRET,
-    { expiresIn: env.JWT_EXPIRES_IN }
+    env.JWT_SECRET as string,
+    { expiresIn: env.JWT_EXPIRES_IN as any }
   );
 
   const refreshToken = uuidv4();

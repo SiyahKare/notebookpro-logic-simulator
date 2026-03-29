@@ -30,20 +30,32 @@ export type WarrantyResult = 'pending' | 'repaired' | 'swapped' | 'refunded' | '
 /**
  * Product Categories
  */
-export enum ProductCategory {
-  SCREEN = 'screen',
-  BATTERY = 'battery',
-  KEYBOARD = 'keyboard',
-  CHIPSET = 'chipset',
-  RAM = 'ram',
-  STORAGE = 'storage',
-  MOTHERBOARD = 'motherboard'
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  subCategories?: SubCategory[];
+  products?: Product[];
+  _count?: { products: number };
+}
+
+export interface SubCategory {
+  id: string;
+  name: string;
+  slug: string;
+  categoryId: string;
+  category?: Category;
+  products?: Product[];
 }
 
 /**
  * Order Status
  */
 export enum OrderStatus {
+  PENDING = 'Pending',
+  CONFIRMED = 'Confirmed',
+  PREPARING = 'Preparing',
   PROCESSING = 'Processing',
   SHIPPED = 'Shipped',
   DELIVERED = 'Delivered',
@@ -108,7 +120,10 @@ export interface Product {
   sku: string;
   shelf_location: string; 
   name: string;
-  category: ProductCategory;
+  categoryId: string;
+  subCategoryId?: string;
+  category?: Category;
+  subCategory?: SubCategory;
   description?: string;
   price_usd: number;
   vat_rate: number;
@@ -222,4 +237,18 @@ export interface RepairRecord {
   
   technician_notes?: string[] | string;
   estimated_cost_tl?: number;
+}
+
+/**
+ * Pricing Calculation Result
+ */
+export interface PricingResult {
+  basePriceUSD: number;
+  appliedDiscountPercent: number;
+  discountedPriceUSD: number;
+  exchangeRate: number;
+  subtotalTL: number;
+  vatAmountTL: number;
+  rawTotalTL: number;
+  finalPriceTL: number;
 }

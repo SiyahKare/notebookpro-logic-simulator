@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Product, CartItem } from '../types';
 import { calculateProductPrice, formatCurrency } from '../utils/pricing';
 import { useCurrency } from './CurrencyContext';
@@ -21,11 +21,30 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+const CART_STORAGE_KEY = 'notebookpro_cart_items';
 
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    if (typeof window === 'undefined') return [];
+
+    try {
+      const storedCart = window.localStorage.getItem(CART_STORAGE_KEY);
+      return storedCart ? JSON.parse(storedCart) : [];
+    } catch (error) {
+      console.error('Failed to restore cart from storage:', error);
+      return [];
+    }
+  });
   const { exchangeRate } = useCurrency();
   const { user } = useAuth();
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+    } catch (error) {
+      console.error('Failed to persist cart:', error);
+    }
+  }, [cartItems]);
 
   const addToCart = (product: Product) => {
     setCartItems(prev => {

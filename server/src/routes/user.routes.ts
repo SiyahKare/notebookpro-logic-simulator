@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../config/database.js';
 import { asyncHandler, AppError } from '../middlewares/errorHandler.js';
 import { authenticate, adminOnly } from '../middlewares/auth.js';
@@ -40,6 +41,50 @@ router.get('/', authenticate, adminOnly, asyncHandler(async (req: Request, res: 
   res.json({
     success: true,
     data: { users, pagination: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) } }
+  });
+}));
+
+// POST /api/users (Admin only)
+router.post('/', authenticate, adminOnly, asyncHandler(async (req: Request, res: Response) => {
+  const { email, password, name, phone, role = 'CUSTOMER' } = req.body;
+
+  if (!email || !password || !name) {
+    throw new AppError('Email, şifre ve isim zorunludur', 400);
+  }
+
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) {
+    throw new AppError('Bu e-posta adresi zaten kayıtlı', 400);
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 12);
+
+  // By default, admin-created users are approved immediately.
+  const isApproved = true;
+
+  const user = await prisma.user.create({
+    data: {
+      email,
+      password: hashedPassword,
+      name,
+      phone,
+      role,
+      isApproved,
+    },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      isApproved: true,
+      createdAt: true
+    }
+  });
+
+  res.status(201).json({
+    success: true,
+    message: 'Kullanıcı başarıyla oluşturuldu.',
+    data: user
   });
 }));
 

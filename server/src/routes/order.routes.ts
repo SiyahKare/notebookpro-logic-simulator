@@ -256,12 +256,13 @@ router.post('/', authenticate, asyncHandler(async (req: Request, res: Response) 
 
   // Send order confirmation email
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  const address = addressId ? await prisma.address.findUnique({ where: { id: addressId } }) : null;
   if (user?.email) {
     emailService.sendOrderConfirmation(user.email, {
       orderNumber: order.orderNumber,
       customerName: user.name,
       items: orderItems.map(item => ({
-        name: item.productName || 'Ürün',
+        name: products.find(p => p.id === item.productId)?.name || 'Ürün',
         quantity: item.quantity,
         price: item.totalPrice,
       })),

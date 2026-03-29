@@ -29,7 +29,7 @@ router.get('/', optionalAuth, asyncHandler(async (req: Request, res: Response) =
   const where: any = { isActive: true };
 
   if (category) {
-    where.category = category;
+    where.categoryId = category;
   }
 
   if (search) {
@@ -56,6 +56,8 @@ router.get('/', optionalAuth, asyncHandler(async (req: Request, res: Response) =
       where,
       include: {
         compatibleModels: true,
+        category: true,
+        subCategory: true,
         reviews: {
           select: {
             rating: true
@@ -111,6 +113,8 @@ router.get('/:id', optionalAuth, asyncHandler(async (req: Request, res: Response
     where: { id },
     include: {
       compatibleModels: true,
+      category: true,
+      subCategory: true,
       reviews: {
         include: {
           user: {
@@ -164,7 +168,8 @@ router.post('/', authenticate, adminOnly, asyncHandler(async (req: Request, res:
     sku,
     name,
     description,
-    category,
+    categoryId,
+    subCategoryId,
     priceUsd,
     vatRate = 0.20,
     stock = 0,
@@ -176,7 +181,7 @@ router.post('/', authenticate, adminOnly, asyncHandler(async (req: Request, res:
   } = req.body;
 
   // Validate required fields
-  if (!sku || !name || !category || !priceUsd) {
+  if (!sku || !name || !categoryId || !priceUsd) {
     throw new AppError('SKU, isim, kategori ve fiyat zorunludur', 400);
   }
 
@@ -191,7 +196,8 @@ router.post('/', authenticate, adminOnly, asyncHandler(async (req: Request, res:
       sku,
       name,
       description,
-      category,
+      categoryId,
+      subCategoryId,
       priceUsd: parseFloat(priceUsd),
       vatRate: parseFloat(vatRate),
       stock: parseInt(stock, 10),
@@ -268,7 +274,7 @@ router.put('/:id', authenticate, adminOnly, asyncHandler(async (req: Request, re
   const product = await prisma.product.update({
     where: { id },
     data: updates,
-    include: { compatibleModels: true }
+    include: { compatibleModels: true, category: true, subCategory: true }
   });
 
   res.json({

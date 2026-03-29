@@ -1,11 +1,11 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
-import { Product, ProductCategory } from '../types';
-import { productsAPI } from '../services/api';
+import { Product, Category, SubCategory } from '../types';
+import { productsAPI, categoriesAPI } from '../services/api';
 
 // Filter interface
 export interface ProductFilters {
   search: string;
-  category: ProductCategory | 'all';
+  category: string; // "all" or categoryId
   stockStatus: 'all' | 'critical' | 'out_of_stock' | 'in_stock';
 }
 
@@ -31,7 +31,10 @@ interface APIProduct {
   sku: string;
   name: string;
   description?: string;
-  category: string;
+  categoryId: string;
+  subCategoryId?: string;
+  category?: Category;
+  subCategory?: SubCategory;
   priceUsd: number;
   vatRate: number;
   stock: number;
@@ -58,7 +61,10 @@ const mapAPIProductToProduct = (apiProduct: APIProduct): Product => ({
   sku: apiProduct.sku,
   name: apiProduct.name,
   description: apiProduct.description,
-  category: apiProduct.category.toLowerCase() as ProductCategory,
+  categoryId: apiProduct.categoryId,
+  subCategoryId: apiProduct.subCategoryId,
+  category: apiProduct.category,
+  subCategory: apiProduct.subCategory,
   price_usd: apiProduct.priceUsd,
   vat_rate: apiProduct.vatRate,
   stock: apiProduct.stock,
@@ -81,7 +87,8 @@ const mapProductToAPIProduct = (product: Partial<Product>) => ({
   sku: product.sku,
   name: product.name,
   description: product.description,
-  category: product.category?.toUpperCase(),
+  categoryId: product.categoryId,
+  subCategoryId: product.subCategoryId,
   priceUsd: product.price_usd,
   vatRate: product.vat_rate,
   stock: product.stock,
@@ -94,9 +101,11 @@ const mapProductToAPIProduct = (product: Partial<Product>) => ({
 
 interface ProductContextType {
   products: Product[];
+  categories: Category[];
   stockMovements: StockMovement[];
   isLoading: boolean;
   error: string | null;
+  refreshCategories: () => Promise<void>;
   addProduct: (product: Product) => Promise<void>;
   updateProduct: (productId: string, updates: Partial<Product>) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
@@ -113,9 +122,27 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const refreshCategories = useCallback(async () => {
+    try {
+      const response = await categoriesAPI.getAll();
+      if (response.success && response.data) {
+        // Ensure data is an array (handle case where API might return { categories: [] } or just [])
+        const categoriesData = Array.isArray(response.data) 
+          ? response.data 
+          : (response.data.categories && Array.isArray(response.data.categories) 
+              ? response.data.categories 
+              : []);
+        setCategories(categoriesData);
+      }
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+    }
+  }, []);
 
   // Ürünleri yükle
   const refreshProducts = useCallback(async () => {
@@ -125,24 +152,24 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const response = await productsAPI.getAll({ limit: 100 });
       
-      if (response.success && response.data?.products) {
+      if (response.success && response.data?.products && Array.isArray(response.data.products)) {
         const mappedProducts = response.data.products.map(mapAPIProductToProduct);
         setProducts(mappedProducts);
         
         // Stock movements'ları da çıkar
         const allMovements: StockMovement[] = [];
         response.data.products.forEach((p: APIProduct) => {
-          if (p.stockMovements) {
+          if (Array.isArray(p.stockMovements)) {
             p.stockMovements.forEach((sm) => {
               allMovements.push({
                 id: sm.id,
                 productId: p.id,
-                type: sm.type.toLowerCase() as StockMovementType,
-                quantity: sm.quantity,
+                type: (sm.type || 'adjustment').toLowerCase() as StockMovementType,
+                quantity: sm.quantity || 0,
                 previousStock: 0,
                 newStock: 0,
                 reason: sm.reason || '',
-                createdAt: new Date(sm.createdAt),
+                createdAt: sm.createdAt ? new Date(sm.createdAt) : new Date(),
                 createdBy: sm.performedBy,
               });
             });
@@ -162,12 +189,14 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // İlk yüklemede ürünleri çek
   useEffect(() => {
-    refreshProducts();
-  }, [refreshProducts]);
+    refreshCategories().then(() => {
+      refreshProducts();
+    });
+  }, [refreshProducts, refreshCategories]);
 
   const addProduct = async (product: Product) => {
     try {
-      const response = await productsAPI.create(mapProductToAPIProduct(product) as Parameters<typeof productsAPI.create>[0]);
+      const response = await productsAPI.create(mapProductToAPIProduct(product) as any);
       
       if (response.success && response.data) {
         const newProduct = mapAPIProductToProduct(response.data);
@@ -325,12 +354,12 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
         const matchesSearch = 
           product.name.toLowerCase().includes(searchLower) ||
           product.sku.toLowerCase().includes(searchLower) ||
-          product.compatible_models.some(m => m.toLowerCase().includes(searchLower));
+          (Array.isArray(product.compatible_models) && product.compatible_models.some(m => m.toLowerCase().includes(searchLower)));
         if (!matchesSearch) return false;
       }
 
       // Category filter
-      if (filters.category !== 'all' && product.category !== filters.category) {
+      if (filters.category !== 'all' && product.categoryId !== filters.category) {
         return false;
       }
 
@@ -348,9 +377,11 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
   return (
     <ProductContext.Provider value={{ 
       products,
+      categories,
       stockMovements,
       isLoading,
       error,
+      refreshCategories,
       addProduct, 
       updateProduct,
       deleteProduct,
